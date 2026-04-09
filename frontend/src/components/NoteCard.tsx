@@ -1,0 +1,486 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+<<<<<<< HEAD
+=======
+const API_BASE = 'http://localhost:5000';
+
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+interface Note {
+  id: number;
+  text: string;
+  createdAt: Date;
+}
+<<<<<<< HEAD
+ // Make div with text that has time 00:00 and make it so that it can be edited and when its changed, the timer changes
+ // Make a function that changes the time value in order to fully implement this. The onChange function will trigger this
+=======
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+
+function NoteCard() {
+  const [noteText, setNoteText] = useState('');
+  const [time, setTime] = useState('30:00');  
+  const [start, setStart] = useState(false);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [timeSettingOpen, setTimeSettingOpen] = useState(false);
+  const [minutesInput, setMinutesInput] = useState('30');
+  const [hideNotesButton, setHideNotes] = useState(false);
+  const secondsRef = useRef(30 * 60);
+
+<<<<<<< HEAD
+=======
+  // TODO: replace with real userId from login/auth state
+  const userId = 1;
+
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+useEffect(() => {
+  if (!start) return;
+
+  const interval = setInterval(() => {
+    if (secondsRef.current <= 0) {
+      setStart(false);
+      clearInterval(interval);
+      return;
+    }
+<<<<<<< HEAD
+    secondsRef.current -= 1;  // ← decrement instead of increment
+=======
+    secondsRef.current -= 1;
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+    const mins = Math.floor(secondsRef.current / 60).toString().padStart(2, '0');
+    const secs = (secondsRef.current % 60).toString().padStart(2, '0');
+    setTime(`${mins}:${secs}`);
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [start]);
+
+
+  function handleNoteChange(e: React.ChangeEvent<HTMLTextAreaElement>): void {
+    setNoteText(e.target.value);
+  }
+
+  function startStopTimer(event: React.MouseEvent<HTMLButtonElement>): void {
+    event.preventDefault();
+    setStart((prev) => !prev); 
+  }
+
+function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
+  const value = e.target.value;
+
+  if (value === '') {
+    setMinutesInput('');
+    secondsRef.current = 0;
+    setTime('00:00');
+    return;
+  }
+
+  const mins = parseInt(value, 10);
+  if (isNaN(mins)) return;
+
+  if (mins > 999) {
+    e.target.value = '999';
+    setMinutesInput('999');
+    secondsRef.current = 999 * 60;
+    setTime('999:00');
+    return;
+  }
+
+  setMinutesInput(String(mins));
+  secondsRef.current = mins * 60;
+  setTime(`${String(mins).padStart(2, '0')}:00`);
+}
+
+<<<<<<< HEAD
+
+  function createNote(event: React.MouseEvent<HTMLButtonElement>): void {
+    event.preventDefault();
+    if (!noteText.trim()) return;
+    const newNote: Note = {
+      id: Date.now(),
+      text: noteText.trim(),
+      createdAt: new Date(),
+    };
+    setNotes((prev) => [newNote, ...prev]);
+    setNoteText('');
+=======
+  async function createNote(event: React.MouseEvent<HTMLButtonElement>): Promise<void> {
+    event.preventDefault();
+    if (!noteText.trim()) return;
+
+    // Optimistically add the note to local state immediately so the UI feels instant
+    const optimisticNote: Note = {
+      id: Date.now(),       // temporary local id until the server assigns one
+      text: noteText.trim(),
+      createdAt: new Date(),
+    };
+    setNotes((prev) => [optimisticNote, ...prev]);
+    setNoteText('');
+
+    // Persist to the backend
+    try {
+      const response = await fetch(`${API_BASE}/api/addcard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, text: optimisticNote.text }),
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        console.error('Failed to save note:', data.error);
+        // Roll back the optimistic update if the server rejected it
+        setNotes((prev) => prev.filter((n) => n.id !== optimisticNote.id));
+      }
+    } catch (err) {
+      console.error('Network error saving note:', err);
+      // Roll back on network failure too
+      setNotes((prev) => prev.filter((n) => n.id !== optimisticNote.id));
+    }
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+  }
+
+  function deleteNote(id: number): void {
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+  }
+
+  function formatDate(date: Date): string {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  function formatTime(date: Date): string {
+    return date.toLocaleTimeString('en-US', {
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  }
+
+  const timeSettingStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    height: '300px',
+    width: '300px',
+    background: '#ffffff',
+    border: '1px solid #d0ddf5',
+    borderRadius: '16px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+    zIndex: 200,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'left',
+    gap: '12px',
+    padding: '20px',
+  }
+
+    const timeSettingOverlayStyle: React.CSSProperties = {
+    display: timeSettingOpen ? 'block' : 'none',
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.25)',
+    zIndex: 199,
+  };
+
+  const panelStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    height: '100vh',
+    width: '300px',
+    background: '#ffffff',
+    borderRight: '1px solid #d0ddf5',
+    transform: panelOpen ? 'translateX(0)' : 'translateX(-100%)',
+    transition: 'transform 0.25s ease',
+    zIndex: 100,
+    display: 'flex',
+    flexDirection: 'column',
+  };
+
+  const overlayStyle: React.CSSProperties = {
+    display: panelOpen ? 'block' : 'none',
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.15)',
+    zIndex: 99,
+  };
+
+  const toggleBtnStyle: React.CSSProperties = {
+    display: hideNotesButton ? 'none' : 'flex',
+    position: 'fixed',
+    top: '16px',
+    left: '16px',
+    zIndex: 101,
+    background: '#2d4ef5',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '10px',
+    width: '42px',
+    height: '42px',
+    fontSize: '18px',
+    cursor: 'pointer',
+<<<<<<< HEAD
+    //display: 'flex',
+=======
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+  };
+
+  const badgeStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '-6px',
+    right: '-6px',
+    background: '#e53e3e',
+    color: '#fff',
+    borderRadius: '50%',
+    width: '18px',
+    height: '18px',
+    fontSize: '11px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 700,
+  };
+
+  return (
+    <div>
+      {/* Top-left toggle button */}
+      <button style={{ ...toggleBtnStyle, position: 'fixed' }} onClick={() => {setPanelOpen(true); setHideNotes(true)}}>
+        <span>&#9776;</span>
+        {notes.length > 0 && <span style={badgeStyle}>{notes.length}</span>}
+      </button>
+
+      {/* Overlay */}
+      <div style={overlayStyle} onClick={() => {setPanelOpen(false); setHideNotes(false)}} />
+
+      {/* Slide-out panel */}
+      <div style={panelStyle}>
+        <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #e8eef7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 600, fontSize: '16px', color: '#1a1a2e' }}>My Notes ({notes.length})</span>
+          <button
+            onClick={() => {setPanelOpen(false); setHideNotes(false)}}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#888', lineHeight: 1 }}
+          >
+            &#x2715;
+          </button>
+        </div>
+
+<<<<<<< HEAD
+
+=======
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+        <div style={{ overflowY: 'auto', flex: 1, padding: '12px' }}>
+          {notes.length === 0 ? (
+            <p style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>
+              No notes yet. Write one!
+            </p>
+          ) : (
+            notes.map((note) => (
+              <div
+                key={note.id}
+                style={{
+                  background: '#eaf1fb',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  marginBottom: '10px',
+                  position: 'relative',
+                }}
+              >
+                <div style={{ fontSize: '11px', color: '#5577bb', marginBottom: '6px', fontWeight: 600, letterSpacing: '0.3px' }}>
+                  {formatDate(note.createdAt)} &middot; {formatTime(note.createdAt)}
+                </div>
+                <p style={{ fontSize: '14px', color: '#1a1a2e', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                  {note.text}
+                </p>
+                <button
+                  onClick={() => deleteNote(note.id)}
+                  title="Delete"
+                  style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    color: '#aaa',
+                    lineHeight: 1,
+                  }}
+                >
+                  &#x2715;
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+<<<<<<< HEAD
+      // Time setting overlay, click on it to close time setting
+      <div style={timeSettingOverlayStyle} onClick={() => setTimeSettingOpen(false)} />
+
+      {/* Time setting popup — only added to the DOM when timeSettingOpen is true */}
+=======
+
+      {/* Time setting overlay */}
+      <div style={timeSettingOverlayStyle} onClick={() => setTimeSettingOpen(false)} />
+
+      {/* Time setting popup */}
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+      {timeSettingOpen && (
+        <div style={timeSettingStyle}>
+          <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <span style={{ fontWeight: 600, fontSize: '16px', color: '#1a1a2e' }}>Time (minutes)</span>
+            <button
+              onClick={() => setTimeSettingOpen(false)}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                color: '#888',
+              }}
+            >
+              &#x2715;
+            </button>
+          </div>
+            <div>
+              <input
+                type="text"
+                value={minutesInput}
+                onChange={(e) => changeTime(e as any)}
+<<<<<<< HEAD
+                
+=======
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+                style={{
+                  textAlign: 'center',
+                  backgroundColor: 'lightgrey',
+                  fontSize: '14px',
+                  border: '1px solid #aac0e8',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  fontFamily: 'monospace',
+                  width: '100px',
+                  height: '33px'
+                }}
+              />
+            </div>
+        </div>
+      )}
+
+      {/* Main UI */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        background: '#dce8f7',
+        gap: '16px',
+      }}>
+
+<<<<<<< HEAD
+
+        <button 
+        onClick={() => setTimeSettingOpen((t) => !t)}
+        style = {{                    
+          background: 'none',
+          border: 'none',}}>
+=======
+        <button 
+          onClick={() => setTimeSettingOpen((t) => !t)}
+          style={{ background: 'none', border: 'none' }}
+        >
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+          <div style={{ fontSize: '72px', fontWeight: 700, color: '#1a1a2e', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace' }}>
+            {time}
+          </div>
+        </button>
+
+        <button 
+<<<<<<< HEAD
+        onClick={(startStopTimer)}
+        className="btn"
+        style = {{  
+          fontSize: '32px', fontWeight: 700, color: '#dce8f7', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace',  
+              zIndex: 101,
+              background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
+              width: '160px',
+              height: '50px',
+              cursor: 'pointer',
+              border: 'none',
+              boxShadow: 'none',
+              //boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
+            }}
+              >
+                {start ? 'Pause' : 'Start'}
+=======
+          onClick={startStopTimer}
+          className="btn"
+          style={{  
+            fontSize: '32px', fontWeight: 700, color: '#dce8f7', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace',  
+            zIndex: 101,
+            background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
+            width: '160px',
+            height: '50px',
+            cursor: 'pointer',
+            border: 'none',
+            boxShadow: 'none',
+          }}
+        >
+          {start ? 'Pause' : 'Start'}
+>>>>>>> b2981a5 (Second Commit for frontend -Attila)
+        </button>
+
+        <textarea
+          placeholder="Write a quick note"
+          value={noteText}
+          onChange={handleNoteChange}
+          style={{
+            width: '600px',
+            height: '300px',
+            padding: '14px 16px',
+            border: '2px dashed #aac0e8',
+            borderRadius: '10px',
+            background: '#eaf1fb',
+            fontSize: '14px',
+            color: '#333',
+            resize: 'none',
+            outline: 'none',
+            fontFamily: 'inherit',
+          }}
+        />
+
+        <button
+          type="button"
+          onClick={createNote}
+          style={{
+            background: '#2d4ef5',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '24px',
+            padding: '10px 28px',
+            fontSize: '15px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Create Note
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default NoteCard;
