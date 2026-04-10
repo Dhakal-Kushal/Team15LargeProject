@@ -1,22 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-<<<<<<< HEAD
-=======
 const API_BASE = 'http://localhost:5000';
 
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
 interface Note {
   id: number;
   text: string;
   createdAt: Date;
 }
-<<<<<<< HEAD
- // Make div with text that has time 00:00 and make it so that it can be edited and when its changed, the timer changes
- // Make a function that changes the time value in order to fully implement this. The onChange function will trigger this
-=======
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
 
 function NoteCard() {
+  const navigate = useNavigate();
   const [noteText, setNoteText] = useState('');
   const [time, setTime] = useState('30:00');  
   const [start, setStart] = useState(false);
@@ -27,34 +21,57 @@ function NoteCard() {
   const [hideNotesButton, setHideNotes] = useState(false);
   const secondsRef = useRef(30 * 60);
 
-<<<<<<< HEAD
-=======
-  // TODO: replace with real userId from login/auth state
-  const userId = 1;
+  // Get userId from localStorage (set during login)
+  const userId = parseInt(localStorage.getItem('userId') || '-1');
 
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
-useEffect(() => {
-  if (!start) return;
-
-  const interval = setInterval(() => {
-    if (secondsRef.current <= 0) {
-      setStart(false);
-      clearInterval(interval);
-      return;
+  // Redirect to login if not logged in
+  useEffect(() => {
+    if (userId === -1) {
+      navigate('/login');
     }
-<<<<<<< HEAD
-    secondsRef.current -= 1;  // ← decrement instead of increment
-=======
-    secondsRef.current -= 1;
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
-    const mins = Math.floor(secondsRef.current / 60).toString().padStart(2, '0');
-    const secs = (secondsRef.current % 60).toString().padStart(2, '0');
-    setTime(`${mins}:${secs}`);
-  }, 1000);
+  }, []);
 
-  return () => clearInterval(interval);
-}, [start]);
+  // Load notes on mount
+  useEffect(() => {
+    async function loadNotes() {
+      try {
+        const response = await fetch(`${API_BASE}/api/searchcards`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, search: '' }),
+        });
+        const data = await response.json();
+        if (!data.error && data.results) {
+          const mapped: Note[] = data.results.map((n: any) => ({
+            id: n.id,
+            text: n.text,
+            createdAt: new Date(n.createdAt),
+          }));
+          setNotes(mapped);
+        }
+      } catch (err) {
+        console.error('Failed to load notes:', err);
+      }
+    }
+    if (userId !== -1) loadNotes();
+  }, []);
 
+  // Timer
+  useEffect(() => {
+    if (!start) return;
+    const interval = setInterval(() => {
+      if (secondsRef.current <= 0) {
+        setStart(false);
+        clearInterval(interval);
+        return;
+      }
+      secondsRef.current -= 1;
+      const mins = Math.floor(secondsRef.current / 60).toString().padStart(2, '0');
+      const secs = (secondsRef.current % 60).toString().padStart(2, '0');
+      setTime(`${mins}:${secs}`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [start]);
 
   function handleNoteChange(e: React.ChangeEvent<HTMLTextAreaElement>): void {
     setNoteText(e.target.value);
@@ -65,82 +82,80 @@ useEffect(() => {
     setStart((prev) => !prev); 
   }
 
-function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
-  const value = e.target.value;
-
-  if (value === '') {
-    setMinutesInput('');
-    secondsRef.current = 0;
-    setTime('00:00');
-    return;
+  function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
+    const value = e.target.value;
+    if (value === '') {
+      setMinutesInput('');
+      secondsRef.current = 0;
+      setTime('00:00');
+      return;
+    }
+    const mins = parseInt(value, 10);
+    if (isNaN(mins)) return;
+    if (mins > 999) {
+      e.target.value = '999';
+      setMinutesInput('999');
+      secondsRef.current = 999 * 60;
+      setTime('999:00');
+      return;
+    }
+    setMinutesInput(String(mins));
+    secondsRef.current = mins * 60;
+    setTime(`${String(mins).padStart(2, '0')}:00`);
   }
 
-  const mins = parseInt(value, 10);
-  if (isNaN(mins)) return;
-
-  if (mins > 999) {
-    e.target.value = '999';
-    setMinutesInput('999');
-    secondsRef.current = 999 * 60;
-    setTime('999:00');
-    return;
-  }
-
-  setMinutesInput(String(mins));
-  secondsRef.current = mins * 60;
-  setTime(`${String(mins).padStart(2, '0')}:00`);
-}
-
-<<<<<<< HEAD
-
-  function createNote(event: React.MouseEvent<HTMLButtonElement>): void {
-    event.preventDefault();
-    if (!noteText.trim()) return;
-    const newNote: Note = {
-      id: Date.now(),
-      text: noteText.trim(),
-      createdAt: new Date(),
-    };
-    setNotes((prev) => [newNote, ...prev]);
-    setNoteText('');
-=======
   async function createNote(event: React.MouseEvent<HTMLButtonElement>): Promise<void> {
     event.preventDefault();
     if (!noteText.trim()) return;
 
-    // Optimistically add the note to local state immediately so the UI feels instant
     const optimisticNote: Note = {
-      id: Date.now(),       // temporary local id until the server assigns one
+      id: Date.now(),
       text: noteText.trim(),
       createdAt: new Date(),
     };
     setNotes((prev) => [optimisticNote, ...prev]);
     setNoteText('');
 
-    // Persist to the backend
     try {
       const response = await fetch(`${API_BASE}/api/addcard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, text: optimisticNote.text }),
       });
-
       const data = await response.json();
       if (data.error) {
         console.error('Failed to save note:', data.error);
-        // Roll back the optimistic update if the server rejected it
         setNotes((prev) => prev.filter((n) => n.id !== optimisticNote.id));
       }
     } catch (err) {
       console.error('Network error saving note:', err);
-      // Roll back on network failure too
       setNotes((prev) => prev.filter((n) => n.id !== optimisticNote.id));
     }
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
   }
 
-  function deleteNote(id: number): void {
+  async function deleteNote(id: number): Promise<void> {
+    // Optimistically remove from UI
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    try {
+      const response = await fetch(`${API_BASE}/api/deletecard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await response.json();
+      if (data.error) {
+        console.error('Failed to delete note:', data.error);
+      }
+    } catch (err) {
+      console.error('Network error deleting note:', err);
+    }
+  }
+
+  function handleLogout(): void {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('firstName');
+    localStorage.removeItem('lastName');
+    navigate('/login');
   }
 
   function formatDate(date: Date): string {
@@ -177,9 +192,9 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
     justifyContent: 'left',
     gap: '12px',
     padding: '20px',
-  }
+  };
 
-    const timeSettingOverlayStyle: React.CSSProperties = {
+  const timeSettingOverlayStyle: React.CSSProperties = {
     display: timeSettingOpen ? 'block' : 'none',
     position: 'fixed',
     inset: 0,
@@ -224,10 +239,6 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
     height: '42px',
     fontSize: '18px',
     cursor: 'pointer',
-<<<<<<< HEAD
-    //display: 'flex',
-=======
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
     alignItems: 'center',
     justifyContent: 'center',
     gap: '4px',
@@ -252,30 +263,28 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
   return (
     <div>
       {/* Top-left toggle button */}
-      <button style={{ ...toggleBtnStyle, position: 'fixed' }} onClick={() => {setPanelOpen(true); setHideNotes(true)}}>
+      <button style={{ ...toggleBtnStyle, position: 'fixed' }} onClick={() => { setPanelOpen(true); setHideNotes(true); }}>
         <span>&#9776;</span>
         {notes.length > 0 && <span style={badgeStyle}>{notes.length}</span>}
       </button>
 
       {/* Overlay */}
-      <div style={overlayStyle} onClick={() => {setPanelOpen(false); setHideNotes(false)}} />
+      <div style={overlayStyle} onClick={() => { setPanelOpen(false); setHideNotes(false); }} />
 
       {/* Slide-out panel */}
       <div style={panelStyle}>
         <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #e8eef7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, fontSize: '16px', color: '#1a1a2e' }}>My Notes ({notes.length})</span>
+          <span style={{ fontWeight: 600, fontSize: '16px', color: '#1a1a2e' }}>
+            My Notes ({notes.length})
+          </span>
           <button
-            onClick={() => {setPanelOpen(false); setHideNotes(false)}}
+            onClick={() => { setPanelOpen(false); setHideNotes(false); }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#888', lineHeight: 1 }}
           >
             &#x2715;
           </button>
         </div>
 
-<<<<<<< HEAD
-
-=======
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
         <div style={{ overflowY: 'auto', flex: 1, padding: '12px' }}>
           {notes.length === 0 ? (
             <p style={{ color: '#aaa', fontSize: '14px', textAlign: 'center', marginTop: '40px' }}>
@@ -320,19 +329,32 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
             ))
           )}
         </div>
-      </div>
-<<<<<<< HEAD
-      // Time setting overlay, click on it to close time setting
-      <div style={timeSettingOverlayStyle} onClick={() => setTimeSettingOpen(false)} />
 
-      {/* Time setting popup — only added to the DOM when timeSettingOpen is true */}
-=======
+        {/* Logout button at bottom of panel */}
+        <div style={{ padding: '12px', borderTop: '1px solid #e8eef7' }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              background: '#e53e3e',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '24px',
+              padding: '10px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
 
       {/* Time setting overlay */}
       <div style={timeSettingOverlayStyle} onClick={() => setTimeSettingOpen(false)} />
 
       {/* Time setting popup */}
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
       {timeSettingOpen && (
         <div style={timeSettingStyle}>
           <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -354,28 +376,24 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
               &#x2715;
             </button>
           </div>
-            <div>
-              <input
-                type="text"
-                value={minutesInput}
-                onChange={(e) => changeTime(e as any)}
-<<<<<<< HEAD
-                
-=======
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
-                style={{
-                  textAlign: 'center',
-                  backgroundColor: 'lightgrey',
-                  fontSize: '14px',
-                  border: '1px solid #aac0e8',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  fontFamily: 'monospace',
-                  width: '100px',
-                  height: '33px'
-                }}
-              />
-            </div>
+          <div>
+            <input
+              type="text"
+              value={minutesInput}
+              onChange={(e) => changeTime(e as any)}
+              style={{
+                textAlign: 'center',
+                backgroundColor: 'lightgrey',
+                fontSize: '14px',
+                border: '1px solid #aac0e8',
+                borderRadius: '8px',
+                padding: '8px',
+                fontFamily: 'monospace',
+                width: '100px',
+                height: '33px',
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -389,47 +407,20 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
         background: '#dce8f7',
         gap: '16px',
       }}>
-
-<<<<<<< HEAD
-
-        <button 
-        onClick={() => setTimeSettingOpen((t) => !t)}
-        style = {{                    
-          background: 'none',
-          border: 'none',}}>
-=======
-        <button 
+        <button
           onClick={() => setTimeSettingOpen((t) => !t)}
           style={{ background: 'none', border: 'none' }}
         >
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
           <div style={{ fontSize: '72px', fontWeight: 700, color: '#1a1a2e', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace' }}>
             {time}
           </div>
         </button>
 
-        <button 
-<<<<<<< HEAD
-        onClick={(startStopTimer)}
-        className="btn"
-        style = {{  
-          fontSize: '32px', fontWeight: 700, color: '#dce8f7', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace',  
-              zIndex: 101,
-              background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
-              width: '160px',
-              height: '50px',
-              cursor: 'pointer',
-              border: 'none',
-              boxShadow: 'none',
-              //boxShadow: '0 4px 8px rgba(0,0,0,0.3)'
-            }}
-              >
-                {start ? 'Pause' : 'Start'}
-=======
+        <button
           onClick={startStopTimer}
           className="btn"
-          style={{  
-            fontSize: '32px', fontWeight: 700, color: '#dce8f7', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace',  
+          style={{
+            fontSize: '32px', fontWeight: 700, color: '#dce8f7', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace',
             zIndex: 101,
             background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
             width: '160px',
@@ -440,7 +431,6 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
           }}
         >
           {start ? 'Pause' : 'Start'}
->>>>>>> b2981a5 (Second Commit for frontend -Attila)
         </button>
 
         <textarea
