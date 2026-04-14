@@ -19,9 +19,6 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-# JetBrains
-.idea/
-
 # Editor (uncomment if you don't want to share VS Code settings)
 # .vscode/
 

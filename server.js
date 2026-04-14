@@ -1,5 +1,3 @@
-// temp comment to test github workflow
-
 const express = require('express');
 const cors = require('cors');
 const MongoClient = require('mongodb').MongoClient;

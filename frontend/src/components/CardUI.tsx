@@ -1,13 +1,4 @@
 import React, { useState } from 'react';
-const app_name = '174.138.45.229'; // Your DigitalOcean IP
-
-function buildPath(route: string): string {
-    if (import.meta.env.MODE !== 'development') {
-        return 'http://' + app_name + ':5000/' + route;
-    } else {
-        return 'http://localhost:5000/' + route;
-    }
-}
 
 function CardUI()
 {
@@ -38,9 +29,8 @@ function CardUI()
         let js = JSON.stringify(obj);
         try
         {
-            const response = await fetch(buildPath('api/addCard'),
-                {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
-
+            const response = await fetch('http://174.138.45.229:5000/api/addcard',
+            {method:'POST', body:js, headers:{'Content-Type':'application/json'}});
             let txt = await response.text();
             let res = JSON.parse(txt);
             if(res.error.length > 0)
@@ -65,9 +55,8 @@ function CardUI()
         let js = JSON.stringify(obj);
         try
         {
-            const response = await fetch(buildPath('api/searchCards'),
-                {method:'POST',body:js,headers:{'Content-Type': 'application/json'}});
-
+            const response = await fetch('http://174.138.45.229:5000/api/searchcards',
+            {method:'POST', body:js, headers:{'Content-Type':'application/json'}});
             let txt = await response.text();
             let res = JSON.parse(txt);
             setResults('Card(s) have been retrieved');
