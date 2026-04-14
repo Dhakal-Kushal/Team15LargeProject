@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const MongoClient = require('mongodb').MongoClient;
-require('dotenv').config();
+require('dotenv').config({ path: '/var/cardsServer/.env' })
 const url = process.env.MONGODB_URI;
 const client = new MongoClient(url, {tlsAllowInvalidCertificates: true});
 client.connect();
