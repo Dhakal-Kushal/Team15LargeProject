@@ -50,7 +50,7 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         port: ${{ secrets.SERVER_PORT }}
-        source: "server.js,package.json,package-lock.json"
+        source: "server.js,api.js,createJWT.js,package.json,package-lock.json"
         target: "/var/cardsServer"
         overwrite: true
 

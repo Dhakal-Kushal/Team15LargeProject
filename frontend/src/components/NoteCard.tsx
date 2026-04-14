@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-
-const API_BASE = 'http://localhost:5000';
+import { useNavigate } from 'react-router-dom';
+import { buildPath } from './Path.ts';
+import { retrieveToken, storeToken } from '../tokenStorage';
 
 interface Note {
-  id: number;
+  id: string;  // UUID string from server
   text: string;
   createdAt: Date;
 }
 
 function NoteCard() {
+  const navigate = useNavigate();
   const [noteText, setNoteText] = useState('');
-  const [time, setTime] = useState('30:00');  
+  const [time, setTime] = useState('30:00');
   const [start, setStart] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -19,27 +21,66 @@ function NoteCard() {
   const [hideNotesButton, setHideNotes] = useState(false);
   const secondsRef = useRef(30 * 60);
 
-  // TODO: replace with real userId from login/auth state
-  const userId = 1;
+  const userDataString = localStorage.getItem('user_data');
+  const userData = userDataString ? JSON.parse(userDataString) : {};
+  const userId = userData.id || -1;
 
-useEffect(() => {
-  if (!start) return;
-
-  const interval = setInterval(() => {
-    if (secondsRef.current <= 0) {
-      setStart(false);
-      clearInterval(interval);
-      return;
+  useEffect(() => {
+    if (userId === -1) {
+      navigate('/login');
     }
-    secondsRef.current -= 1;
-    const mins = Math.floor(secondsRef.current / 60).toString().padStart(2, '0');
-    const secs = (secondsRef.current % 60).toString().padStart(2, '0');
-    setTime(`${mins}:${secs}`);
-  }, 1000);
+  }, [userId, navigate]);
 
-  return () => clearInterval(interval);
-}, [start]);
+  async function loadNotes(): Promise<void> {
+    try {
+      const response = await fetch(buildPath('api/searchcards'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: userId,
+          search: '',
+          jwtToken: retrieveToken()
+        }),
+      });
+      const data = await response.json();
 
+      if (data.jwtToken) {
+        storeToken(data.jwtToken);
+      }
+
+      if (!data.error && data.results) {
+        const mapped: Note[] = data.results.map((n: any) => ({
+          id: n.id,
+          text: n.text,
+          createdAt: new Date(n.createdAt || Date.now()),
+        }));
+        setNotes(mapped.reverse());
+      }
+    } catch (err) {
+      console.error('Failed to load notes:', err);
+    }
+  }
+
+  useEffect(() => {
+    if (userId !== -1) loadNotes();
+  }, [userId]);
+
+  // Timer
+  useEffect(() => {
+    if (!start) return;
+    const interval = setInterval(() => {
+      if (secondsRef.current <= 0) {
+        setStart(false);
+        clearInterval(interval);
+        return;
+      }
+      secondsRef.current -= 1;
+      const mins = Math.floor(secondsRef.current / 60).toString().padStart(2, '0');
+      const secs = (secondsRef.current % 60).toString().padStart(2, '0');
+      setTime(`${mins}:${secs}`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [start]);
 
   function handleNoteChange(e: React.ChangeEvent<HTMLTextAreaElement>): void {
     setNoteText(e.target.value);
@@ -47,71 +88,108 @@ useEffect(() => {
 
   function startStopTimer(event: React.MouseEvent<HTMLButtonElement>): void {
     event.preventDefault();
-    setStart((prev) => !prev); 
+    setStart((prev) => !prev);
   }
 
-function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
-  const value = e.target.value;
-
-  if (value === '') {
-    setMinutesInput('');
-    secondsRef.current = 0;
-    setTime('00:00');
-    return;
+  function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
+    const value = e.target.value;
+    if (value === '') {
+      setMinutesInput('');
+      secondsRef.current = 0;
+      setTime('00:00');
+      return;
+    }
+    const mins = parseInt(value, 10);
+    if (isNaN(mins)) return;
+    if (mins > 999) {
+      e.target.value = '999';
+      setMinutesInput('999');
+      secondsRef.current = 999 * 60;
+      setTime('999:00');
+      return;
+    }
+    setMinutesInput(String(mins));
+    secondsRef.current = mins * 60;
+    setTime(`${String(mins).padStart(2, '0')}:00`);
   }
-
-  const mins = parseInt(value, 10);
-  if (isNaN(mins)) return;
-
-  if (mins > 999) {
-    e.target.value = '999';
-    setMinutesInput('999');
-    secondsRef.current = 999 * 60;
-    setTime('999:00');
-    return;
-  }
-
-  setMinutesInput(String(mins));
-  secondsRef.current = mins * 60;
-  setTime(`${String(mins).padStart(2, '0')}:00`);
-}
 
   async function createNote(event: React.MouseEvent<HTMLButtonElement>): Promise<void> {
     event.preventDefault();
     if (!noteText.trim()) return;
 
-    // Optimistically add the note to local state immediately so the UI feels instant
+    // Use a UUID for the optimistic temp ID to match the string type from the server
+    const tempId = crypto.randomUUID();
     const optimisticNote: Note = {
-      id: Date.now(),       // temporary local id until the server assigns one
+      id: tempId,
       text: noteText.trim(),
       createdAt: new Date(),
     };
     setNotes((prev) => [optimisticNote, ...prev]);
     setNoteText('');
 
-    // Persist to the backend
     try {
-      const response = await fetch(`${API_BASE}/api/addcard`, {
+      const response = await fetch(buildPath('api/addcard'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, text: optimisticNote.text }),
+        body: JSON.stringify({
+          userId: userId,
+          text: optimisticNote.text,
+          jwtToken: retrieveToken()
+        }),
       });
-
       const data = await response.json();
-      if (data.error) {
+
+      if (data.jwtToken) {
+        storeToken(data.jwtToken);
+      }
+
+      if (data.error && data.error.length > 0) {
         console.error('Failed to save note:', data.error);
-        // Roll back the optimistic update if the server rejected it
-        setNotes((prev) => prev.filter((n) => n.id !== optimisticNote.id));
+        setNotes((prev) => prev.filter((n) => n.id !== tempId));
+      } else {
+        if (data.id) {
+          setNotes((prev) =>
+            prev.map((n) => n.id === tempId ? { ...n, id: data.id } : n)
+          );
+        }
       }
     } catch (err) {
       console.error('Network error saving note:', err);
-      // Roll back on network failure too
-      setNotes((prev) => prev.filter((n) => n.id !== optimisticNote.id));
+      setNotes((prev) => prev.filter((n) => n.id !== tempId));
     }
   }
 
-  function deleteNote(id: number): void {
+  async function deleteNote(id: string): Promise<void> {
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    try {
+      const response = await fetch(buildPath('api/deletecard'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: id,
+          jwtToken: retrieveToken()
+        }),
+      });
+      const data = await response.json();
+
+      if (data.jwtToken) {
+        storeToken(data.jwtToken);
+      }
+
+      if (data.error && data.error.length > 0) {
+        console.error('Failed to delete note:', data.error);
+        loadNotes();
+      }
+    } catch (err) {
+      console.error('Network error deleting note:', err);
+      loadNotes();
+    }
+  }
+
+  function handleLogout(): void {
+    localStorage.removeItem('user_data');
+    localStorage.removeItem('token_data');
+    navigate('/login');
   }
 
   function formatDate(date: Date): string {
@@ -125,8 +203,8 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
 
   function formatTime(date: Date): string {
     return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit',
     });
   }
 
@@ -148,9 +226,9 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
     justifyContent: 'left',
     gap: '12px',
     padding: '20px',
-  }
+  };
 
-    const timeSettingOverlayStyle: React.CSSProperties = {
+  const timeSettingOverlayStyle: React.CSSProperties = {
     display: timeSettingOpen ? 'block' : 'none',
     position: 'fixed',
     inset: 0,
@@ -218,21 +296,20 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
 
   return (
     <div>
-      {/* Top-left toggle button */}
-      <button style={{ ...toggleBtnStyle, position: 'fixed' }} onClick={() => {setPanelOpen(true); setHideNotes(true)}}>
+      <button style={{ ...toggleBtnStyle, position: 'fixed' }} onClick={() => { setPanelOpen(true); setHideNotes(true); }}>
         <span>&#9776;</span>
         {notes.length > 0 && <span style={badgeStyle}>{notes.length}</span>}
       </button>
 
-      {/* Overlay */}
-      <div style={overlayStyle} onClick={() => {setPanelOpen(false); setHideNotes(false)}} />
+      <div style={overlayStyle} onClick={() => { setPanelOpen(false); setHideNotes(false); }} />
 
-      {/* Slide-out panel */}
       <div style={panelStyle}>
         <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid #e8eef7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontWeight: 600, fontSize: '16px', color: '#1a1a2e' }}>My Notes ({notes.length})</span>
+          <span style={{ fontWeight: 600, fontSize: '16px', color: '#1a1a2e' }}>
+            My Notes ({notes.length})
+          </span>
           <button
-            onClick={() => {setPanelOpen(false); setHideNotes(false)}}
+            onClick={() => { setPanelOpen(false); setHideNotes(false); }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', color: '#888', lineHeight: 1 }}
           >
             &#x2715;
@@ -283,12 +360,29 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
             ))
           )}
         </div>
+
+        <div style={{ padding: '12px', borderTop: '1px solid #e8eef7' }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              background: '#e53e3e',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '24px',
+              padding: '10px',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
-      {/* Time setting overlay */}
       <div style={timeSettingOverlayStyle} onClick={() => setTimeSettingOpen(false)} />
 
-      {/* Time setting popup */}
       {timeSettingOpen && (
         <div style={timeSettingStyle}>
           <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -310,28 +404,27 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
               &#x2715;
             </button>
           </div>
-            <div>
-              <input
-                type="text"
-                value={minutesInput}
-                onChange={(e) => changeTime(e as any)}
-                style={{
-                  textAlign: 'center',
-                  backgroundColor: 'lightgrey',
-                  fontSize: '14px',
-                  border: '1px solid #aac0e8',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  fontFamily: 'monospace',
-                  width: '100px',
-                  height: '33px'
-                }}
-              />
-            </div>
+          <div>
+            <input
+              type="text"
+              value={minutesInput}
+              onChange={(e) => changeTime(e as any)}
+              style={{
+                textAlign: 'center',
+                backgroundColor: 'lightgrey',
+                fontSize: '14px',
+                border: '1px solid #aac0e8',
+                borderRadius: '8px',
+                padding: '8px',
+                fontFamily: 'monospace',
+                width: '100px',
+                height: '33px',
+              }}
+            />
+          </div>
         </div>
       )}
 
-      {/* Main UI */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
@@ -341,8 +434,7 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
         background: '#dce8f7',
         gap: '16px',
       }}>
-
-        <button 
+        <button
           onClick={() => setTimeSettingOpen((t) => !t)}
           style={{ background: 'none', border: 'none' }}
         >
@@ -351,11 +443,11 @@ function changeTime(e: React.ChangeEvent<HTMLInputElement>): void {
           </div>
         </button>
 
-        <button 
+        <button
           onClick={startStopTimer}
           className="btn"
-          style={{  
-            fontSize: '32px', fontWeight: 700, color: '#dce8f7', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace',  
+          style={{
+            fontSize: '32px', fontWeight: 700, color: '#dce8f7', letterSpacing: '2px', lineHeight: 1, fontFamily: 'monospace',
             zIndex: 101,
             background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
             width: '160px',
