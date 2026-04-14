@@ -30,7 +30,7 @@ function Register() {
       if (data.error && data.error.length > 0) {
         setError(data.error);
       } else {
-        navigate('/login');
+        navigate('/');
       }
     } catch (err) {
       setError('Server error, please try again');
@@ -138,7 +138,7 @@ function Register() {
         <div style={{ textAlign: 'center', fontSize: '13px', color: '#5577bb' }}>
           Already have an account?{' '}
           <span
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/')}
             style={{ fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', color: '#2d4ef5' }}
           >
             Log in here
@@ -148,7 +148,7 @@ function Register() {
 
       <button
         type="button"
-        onClick={() => navigate('/login')}
+        onClick={() => navigate('/')}
         style={{
           background: '#2d4ef5',
           color: '#fff',
