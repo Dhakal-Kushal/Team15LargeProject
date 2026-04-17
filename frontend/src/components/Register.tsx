@@ -6,10 +6,12 @@ function Register() {
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   async function handleRegister(e: React.MouseEvent<HTMLButtonElement>): Promise<void> {
     e.preventDefault();
@@ -23,14 +25,15 @@ function Register() {
       const response = await fetch(buildPath('api/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, login, password }),
+        body: JSON.stringify({ firstName, lastName, login, password, email }),
       });
       const data = await response.json();
 
       if (data.error && data.error.length > 0) {
         setError(data.error);
       } else {
-        navigate('/');
+        setError('');
+        setSuccess('Account created. Check your email to verify, then log in.');
       }
     } catch (err) {
       setError('Server error, please try again');
@@ -90,6 +93,12 @@ function Register() {
           </div>
         )}
 
+        {success && (
+          <div style={{ color: '#2f855a', fontSize: '13px', textAlign: 'center', fontWeight: 600 }}>
+            {success}
+          </div>
+        )}
+
         <div>
           <label style={labelStyle}>First Name</label>
           <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" style={inputStyle} />
@@ -98,6 +107,11 @@ function Register() {
         <div>
           <label style={labelStyle}>Last Name</label>
           <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" style={inputStyle} />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Email</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" style={inputStyle} />
         </div>
 
         <div>
