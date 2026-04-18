@@ -145,6 +145,15 @@ function Login() {
           />
         </div>
 
+        <div style={{ textAlign: 'right', fontSize: '12px', marginTop: '-8px' }}>
+          <span
+            onClick={() => navigate('/forgot-password')}
+            style={{ fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', color: '#2d4ef5' }}
+          >
+            Forgot password?
+          </span>
+        </div>
+
         <button
           type="button"
           onClick={doLogin}
