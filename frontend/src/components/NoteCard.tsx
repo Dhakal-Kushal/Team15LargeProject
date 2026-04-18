@@ -278,6 +278,24 @@ function NoteCard() {
     gap: '4px',
   };
 
+  const calendarBtnStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: '16px',
+    right: '16px',
+    zIndex: 101,
+    background: '#2d4ef5',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '10px',
+    padding: '0 14px',
+    height: '42px',
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+  };
+
   const badgeStyle: React.CSSProperties = {
     position: 'absolute',
     top: '-6px',
@@ -299,6 +317,10 @@ function NoteCard() {
       <button style={{ ...toggleBtnStyle, position: 'fixed' }} onClick={() => { setPanelOpen(true); setHideNotes(true); }}>
         <span>&#9776;</span>
         {notes.length > 0 && <span style={badgeStyle}>{notes.length}</span>}
+      </button>
+
+      <button style={calendarBtnStyle} onClick={() => navigate('/calendar')}>
+        Calendar
       </button>
 
       <div style={overlayStyle} onClick={() => { setPanelOpen(false); setHideNotes(false); }} />
