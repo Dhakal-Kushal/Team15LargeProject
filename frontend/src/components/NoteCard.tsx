@@ -117,8 +117,8 @@ function NoteCard() {
     event.preventDefault();
     if (!noteText.trim()) return;
 
-    // Use a UUID for the optimistic temp ID to match the string type from the server
-    const tempId = crypto.randomUUID();
+    // crypto.randomUUID only works in secure contexts (HTTPS/localhost). This string form works over plain HTTP too.
+    const tempId = 'tmp-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     const optimisticNote: Note = {
       id: tempId,
       text: noteText.trim(),
