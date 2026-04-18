@@ -1,4 +1,4 @@
-const app_name = '174.138.45.229';
+const app_name = 'team15study.com';
 
 export function buildPath(route: string) {
     // Vite uses import.meta.env.DEV to check if you are running locally

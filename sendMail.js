@@ -1,26 +1,27 @@
-// Port 587 = STARTTLS; use 465 + secure:true for SMTPS.
-// Registration still completes if email can't send
+// Uses Resend's HTTP API (port 443) instead of SMTP. DigitalOcean blocks
+// outbound ports 25/465/587, so Nodemailer + Gmail SMTP cannot be used here.
+// Errors are logged and returned so an email failure doesn't halt registration.
 
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: false,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-});
-
-const FROM_EMAIL = process.env.FROM_EMAIL || process.env.SMTP_USER;
+const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 async function sendMail(to, subject, html) {
     try {
-        await transporter.sendMail({ from: FROM_EMAIL, to, subject, html });
-        return { sent: true, error: '' };
-    } catch(e) {
-        console.error('sendMail failed:', e.toString());
+        const { data, error } = await resend.emails.send({
+            from: FROM_EMAIL,
+            to,
+            subject,
+            html,
+        });
+        if (error) {
+            console.error('sendMail Resend error:', error);
+            return { sent: false, error: error.message || String(error) };
+        }
+        return { sent: true, error: '', id: data?.id };
+    } catch (e) {
+        console.error('sendMail threw:', e.toString());
         return { sent: false, error: e.toString() };
     }
 }
