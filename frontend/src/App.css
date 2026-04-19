@@ -1,27 +1,25 @@
-/* App.css */
+/* LIGHT MODE (Default) */
 :root {
-  --bg-color: #dce8f7;
+  --bg-color: #f3f4f6;
+  --text-main: #1f2937;
+  --text-sub: #6b7280;
   --card-bg: #ffffff;
-  --text-main: #1a1a2e;
-  --text-sub: #5577bb;
-  --input-bg: #eaf1fb;
-  --border-color: #d0ddf5;
+  --border-color: #d1d5db;
+  --input-bg: #ffffff;
 }
 
-
+/* DARK MODE (Triggered by ThemeContext) */
 body.dark-mode {
   --bg-color: #121212;
+  --text-main: #ffffff;
+  --text-sub: #9ca3af;
   --card-bg: #1e1e1e;
-  --text-main: #e0e0e0;
-  --text-sub: #a0a0ca;
+  --border-color: #333333;
   --input-bg: #2d2d2d;
-  --border-color: #444444;
-  --panel-bg: #1e1e1e;
-  --note-bg: #2d2d2d;
 }
 
+/* Ensure the background changes smoothly */
 body {
   background-color: var(--bg-color);
-  color: var(--text-main);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }

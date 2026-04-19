@@ -1,181 +1,110 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildPath } from './Path.ts';
+import { useTheme } from '../ThemeContext';
 
 function Register() {
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [login, setLogin] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', login: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  async function handleRegister(e: React.MouseEvent<HTMLButtonElement>): Promise<void> {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setFormData({...formData, [e.target.name]: e.target.value});
+
+  async function handleRegister(e: React.MouseEvent) {
     e.preventDefault();
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+    if (formData.password !== formData.confirmPassword) { setError('Passwords do not match'); return; }
     try {
       const response = await fetch(buildPath('api/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, login, password, email }),
+        body: JSON.stringify(formData),
       });
       const data = await response.json();
-
-      if (data.error && data.error.length > 0) {
-        setError(data.error);
-      } else {
-        setError('');
-        setSuccess('Account created. Check your email to verify, then log in.');
+      if (data.error) setError(data.error);
+      else {
+        setError(''); // Clear error on success
+        setSuccess('Account created! You can now log in.');
+        setTimeout(() => navigate('/login'), 2000); // Redirect after 2 seconds
       }
-    } catch (err) {
-      setError('Server error, please try again');
-    }
+    } catch { setError('Server error'); }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '12px 14px',
-    border: '2px dashed #aac0e8',
-    borderRadius: '10px',
-    background: '#eaf1fb',
-    fontSize: '14px',
-    color: '#333',
+  // Consistent Input Styling: Medium blue dashes in Light Mode, standard variables in Dark Mode
+  const inputStyle: React.CSSProperties = { 
+    width: '100%', 
+    padding: '10px', 
+    border: isDarkMode ? '2px dashed var(--border-color)' : '2px dashed #6c8ef2', 
+    borderRadius: '10px', 
+    background: 'var(--input-bg)', 
+    color: 'var(--text-main)', 
+    marginBottom: '10px', 
     outline: 'none',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#1a1a2e',
-    marginBottom: '6px',
-    display: 'block',
+    transition: 'all 0.2s ease' 
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      background: '#dce8f7',
+    <div style={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      minHeight: '100vh', 
+      background: 'var(--bg-color)', 
       gap: '16px',
+      transition: 'background 0.25s ease' 
     }}>
-      <div style={{
-        background: '#ffffff',
-        border: '1px solid #d0ddf5',
-        borderRadius: '16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-        padding: '36px 40px',
-        width: '400px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '18px',
-      }}>
-
-        <div style={{ fontSize: '28px', fontWeight: 700, color: '#1a1a2e', fontFamily: 'monospace', letterSpacing: '1px', textAlign: 'center' }}>
-          Register
-        </div>
-
-        {error && (
-          <div style={{ color: '#e53e3e', fontSize: '13px', textAlign: 'center', fontWeight: 600 }}>
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div style={{ color: '#2f855a', fontSize: '13px', textAlign: 'center', fontWeight: 600 }}>
-            {success}
-          </div>
-        )}
-
-        <div>
-          <label style={labelStyle}>First Name</label>
-          <input type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" style={inputStyle} />
-        </div>
-
-        <div>
-          <label style={labelStyle}>Last Name</label>
-          <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" style={inputStyle} />
-        </div>
-
-        <div>
-          <label style={labelStyle}>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@example.com" style={inputStyle} />
-        </div>
-
-        <div>
-          <label style={labelStyle}>Username</label>
-          <input type="text" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="johndoe123" style={inputStyle} />
-        </div>
-
-        <div>
-          <label style={labelStyle}>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
-        </div>
-
-        <div>
-          <label style={labelStyle}>Confirm Password</label>
-          <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" style={inputStyle} />
-        </div>
-
-        <button
-          type="button"
-          onClick={handleRegister}
-          style={{
-            background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
-            color: '#dce8f7',
-            border: 'none',
-            borderRadius: '24px',
-            padding: '12px 28px',
-            fontSize: '16px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontFamily: 'monospace',
-            letterSpacing: '1px',
-            width: '100%',
-          }}
-        >
-          Create Account
-        </button>
-
-        <div style={{ textAlign: 'center', fontSize: '13px', color: '#5577bb' }}>
-          Already have an account?{' '}
-          <span
-            onClick={() => navigate('/')}
-            style={{ fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', color: '#2d4ef5' }}
-          >
-            Log in here
-          </span>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => navigate('/')}
-        style={{
-          background: '#2d4ef5',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '24px',
-          padding: '10px 28px',
-          fontSize: '15px',
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
-      >
-        ← Back
+      
+      {/* Theme Toggle Button */}
+      <button onClick={toggleDarkMode} style={{ position: 'fixed', top: '16px', right: '16px', background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '50%', width: '42px', height: '42px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+        {isDarkMode ? '🌙' : '☀️'}
       </button>
+
+      {/* Register Card */}
+      <div style={{ 
+        background: 'var(--card-bg)', 
+        border: '1px solid var(--border-color)', 
+        borderRadius: '16px', 
+        padding: '30px', 
+        width: '380px', 
+        boxShadow: isDarkMode ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.1)',
+        transition: 'all 0.25s ease'
+      }}>
+        <h2 style={{ textAlign: 'center', color: 'var(--text-main)', fontFamily: 'monospace', marginBottom: '20px', fontSize: '28px', fontWeight: 700 }}>Register</h2>
+        
+        {error && <p style={{ color: '#e53e3e', textAlign: 'center', fontSize: '13px', marginBottom: '10px' }}>{error}</p>}
+        {success && <p style={{ color: '#38a169', textAlign: 'center', fontSize: '13px', marginBottom: '10px' }}>{success}</p>}
+        
+        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
+          {/* Mapping fields */}
+          {[
+            { id: 'firstName', label: 'First Name' },
+            { id: 'lastName', label: 'Last Name' },
+            { id: 'email', label: 'Email' },
+            { id: 'login', label: 'Username' }
+          ].map(field => (
+            <div key={field.id}>
+              <label style={{ color: 'var(--text-main)', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>{field.label}</label>
+              <input type="text" name={field.id} onChange={handleChange} style={inputStyle} />
+            </div>
+          ))}
+
+          <label style={{ color: 'var(--text-main)', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Password</label>
+          <input type="password" name="password" onChange={handleChange} style={inputStyle} />
+          
+          <label style={{ color: 'var(--text-main)', fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Confirm Password</label>
+          <input type="password" name="confirmPassword" onChange={handleChange} style={inputStyle} />
+        </div>
+        
+        <button onClick={handleRegister} style={{ width: '100%', padding: '12px', background: '#2d4ef5', color: '#fff', border: 'none', borderRadius: '24px', cursor: 'pointer', fontWeight: 700, marginTop: '10px', fontSize: '16px' }}>
+          Register
+        </button>
+        
+        <p onClick={() => navigate('/login')} style={{ textAlign: 'center', marginTop: '15px', color: '#2d4ef5', cursor: 'pointer', fontSize: '13px', textDecoration: 'underline', fontWeight: 600 }}>
+          Back to Login
+        </p>
+      </div>
     </div>
   );
 }

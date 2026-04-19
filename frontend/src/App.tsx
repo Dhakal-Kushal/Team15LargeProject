@@ -15,7 +15,7 @@ function App()
 		<ThemeProvider>
 			<BrowserRouter>
 				<Routes>
-					<Route path="/" element={<LoginPage />} />
+					<Route path="/" element={<NotePage />} />
 					<Route path="/login" element={<LoginPage />} />
 					<Route path="/NoteCards" element={<NotePage />} />
 					<Route path="/register" element={<RegisterPage />} />
