@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { buildPath } from '../components/Path';
 import { retrieveToken, storeToken } from '../tokenStorage';
-import { useTheme } from '../ThemeContext'; // Import your theme hook
+import { useTheme } from '../ThemeContext';
 
 interface Note {
   id: string;
@@ -11,11 +11,15 @@ interface Note {
 }
 
 function CalendarPage() {
-  const { isDarkMode, toggleDarkMode } = useTheme(); // Use the theme hook
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const [notes, setNotes] = useState<Note[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+  const [isAddingNote, setIsAddingNote] = useState(false);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const userDataString = localStorage.getItem('user_data');
   const userData = userDataString ? JSON.parse(userDataString) : {};
@@ -55,6 +59,59 @@ function CalendarPage() {
     } catch (err) {
       console.error('Failed to load notes:', err);
     }
+  }
+
+  async function handleAddNote(): Promise<void> {
+    if (!newNoteText.trim() || !selectedDateKey) return;
+
+    setIsSaving(true);
+    setSaveError('');
+
+    try {
+      // Build a date at noon local time for the selected day so timezone
+      // offsets don't accidentally shift the date to the previous day.
+      const [year, month, day] = selectedDateKey.split('-').map(Number);
+      const noteDate = new Date(year, month - 1, day, 12, 0, 0);
+
+      const response = await fetch(buildPath('api/addcard'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: newNoteText.trim(),
+          jwtToken: retrieveToken(),
+          date: noteDate.toISOString(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        setSaveError(data.error);
+      } else {
+        if (data.jwtToken) storeToken(data.jwtToken);
+        // Optimistically add the new note locally so the UI updates instantly
+        const newNote: Note = {
+          id: data.id,
+          text: newNoteText.trim(),
+          createdAt: noteDate,
+        };
+        setNotes((prev) => [...prev, newNote]);
+        setNewNoteText('');
+        setIsAddingNote(false);
+      }
+    } catch (err) {
+      setSaveError('Failed to save note. Please try again.');
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleCloseModal(): void {
+    setSelectedDateKey(null);
+    setIsAddingNote(false);
+    setNewNoteText('');
+    setSaveError('');
   }
 
   function getDateKey(date: Date): string {
@@ -103,14 +160,14 @@ function CalendarPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: isDarkMode ? 'var(--bg-color)' : '#dce8f7', // Use your dark mode variable
+      background: isDarkMode ? 'var(--bg-color)' : '#dce8f7',
       padding: '30px',
       boxSizing: 'border-box',
       transition: 'background 0.25s ease'
     }}>
-      
-      {/* Theme Toggle Button (Matches your other pages) */}
-      <button onClick={toggleDarkMode} style={{ 
+
+      {/* Theme Toggle Button */}
+      <button onClick={toggleDarkMode} style={{
         position: 'fixed', top: '16px', right: '16px', zIndex: 1001,
         background: 'var(--card-bg)', color: 'var(--text-main)',
         border: '1px solid var(--border-color)', borderRadius: '50%',
@@ -131,37 +188,37 @@ function CalendarPage() {
         border: isDarkMode ? '1px solid var(--border-color)' : 'none',
         transition: '0.25s'
       }}>
-        
+
         {/* Header Section */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <button onClick={() => navigate('/NoteCards')} style={{
-              background: '#2d4ef5', color: '#fff', border: 'none',
-              borderRadius: '12px', padding: '10px 16px', cursor: 'pointer', fontWeight: 600,
-            }}>
+            background: '#2d4ef5', color: '#fff', border: 'none',
+            borderRadius: '12px', padding: '10px 16px', cursor: 'pointer', fontWeight: 600,
+          }}>
             Back to Notes
           </button>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <button onClick={prevMonth} style={{
-                border: isDarkMode ? '1px solid var(--border-color)' : 'none',
-                background: isDarkMode ? '#2d2d2d' : '#fff',
-                color: 'var(--text-main)', borderRadius: '10px',
-                width: '40px', height: '40px', cursor: 'pointer', fontSize: '18px',
-              }}>‹</button>
+              border: isDarkMode ? '1px solid var(--border-color)' : 'none',
+              background: isDarkMode ? '#2d2d2d' : '#fff',
+              color: 'var(--text-main)', borderRadius: '10px',
+              width: '40px', height: '40px', cursor: 'pointer', fontSize: '18px',
+            }}>‹</button>
 
             <h1 style={{ margin: 0, fontSize: '28px', color: 'var(--text-main)' }}>{monthLabel}</h1>
 
             <button onClick={nextMonth} style={{
-                border: isDarkMode ? '1px solid var(--border-color)' : 'none',
-                background: isDarkMode ? '#2d2d2d' : '#fff',
-                color: 'var(--text-main)', borderRadius: '10px',
-                width: '40px', height: '40px', cursor: 'pointer', fontSize: '18px',
-              }}>›</button>
+              border: isDarkMode ? '1px solid var(--border-color)' : 'none',
+              background: isDarkMode ? '#2d2d2d' : '#fff',
+              color: 'var(--text-main)', borderRadius: '10px',
+              width: '40px', height: '40px', cursor: 'pointer', fontSize: '18px',
+            }}>›</button>
           </div>
-          <div style={{ width: '100px' }}></div> {/* Spacer for balance */}
+          <div style={{ width: '100px' }}></div>
         </div>
 
-        {/* Calendar Grid */}
+        {/* Day Name Headers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px', marginBottom: '10px' }}>
           {dayNames.map((day) => (
             <div key={day} style={{ textAlign: 'center', fontWeight: 700, color: isDarkMode ? '#9ca3af' : '#6b7280', padding: '8px 0' }}>
@@ -170,6 +227,7 @@ function CalendarPage() {
           ))}
         </div>
 
+        {/* Calendar Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px' }}>
           {calendarCells.map((date, index) => {
             if (!date) return <div key={index} style={{ minHeight: '120px' }} />;
@@ -201,15 +259,15 @@ function CalendarPage() {
 
                 {previews.map((note) => (
                   <div key={note.id} style={{
-                      background: isDarkMode ? '#3d3d5c' : '#eaf1fb',
-                      borderRadius: '8px',
-                      padding: '6px 8px',
-                      fontSize: '11px',
-                      color: isDarkMode ? '#e2e8f0' : '#334155',
-                      lineHeight: 1.3,
-                      maxHeight: '3.2em',
-                      overflow: 'hidden'
-                    }}>
+                    background: isDarkMode ? '#3d3d5c' : '#eaf1fb',
+                    borderRadius: '8px',
+                    padding: '6px 8px',
+                    fontSize: '11px',
+                    color: isDarkMode ? '#e2e8f0' : '#334155',
+                    lineHeight: 1.3,
+                    maxHeight: '3.2em',
+                    overflow: 'hidden'
+                  }}>
                     {getPreview(note.text)}
                   </div>
                 ))}
@@ -225,35 +283,41 @@ function CalendarPage() {
         </div>
       </div>
 
-      {/* Modal / Popup */}
+      {/* Modal */}
       {selectedDateKey && (
         <>
-          <div onClick={() => setSelectedDateKey(null)}
+          <div onClick={handleCloseModal}
             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999 }} />
 
           <div style={{
-              position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-              width: 'min(700px, 90vw)', maxHeight: '80vh',
-              background: isDarkMode ? '#1e1e1e' : '#ffffff',
-              borderRadius: '18px', padding: '24px', zIndex: 1000,
-              boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
-              overflowY: 'auto', border: isDarkMode ? '1px solid var(--border-color)' : 'none'
-            }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+            width: 'min(700px, 90vw)', maxHeight: '80vh',
+            background: isDarkMode ? '#1e1e1e' : '#ffffff',
+            borderRadius: '18px', padding: '24px', zIndex: 1000,
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+            overflowY: 'auto', border: isDarkMode ? '1px solid var(--border-color)' : 'none',
+            display: 'flex', flexDirection: 'column', gap: '16px'
+          }}>
+
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, color: 'var(--text-main)' }}>Notes for {selectedDateKey}</h2>
-              <button onClick={() => setSelectedDateKey(null)}
-                style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-main)' }}>×</button>
+              <button onClick={handleCloseModal}
+                style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-main)' }}>
+                ×
+              </button>
             </div>
 
-            {selectedNotes.length === 0 ? (
-              <p style={{ color: 'var(--text-sub)' }}>No notes for this day.</p>
+            {/* Existing Notes */}
+            {selectedNotes.length === 0 && !isAddingNote ? (
+              <p style={{ color: 'var(--text-sub)', margin: 0 }}>No notes for this day.</p>
             ) : (
               selectedNotes.map((note) => (
                 <div key={note.id} style={{
-                    background: isDarkMode ? '#2d2d2d' : '#f4f7fc',
-                    borderRadius: '12px', padding: '16px', marginBottom: '12px',
-                    border: isDarkMode ? '1px solid #444' : '1px solid #e4eaf5'
-                  }}>
+                  background: isDarkMode ? '#2d2d2d' : '#f4f7fc',
+                  borderRadius: '12px', padding: '16px',
+                  border: isDarkMode ? '1px solid #444' : '1px solid #e4eaf5'
+                }}>
                   <div style={{ fontSize: '12px', color: '#5577bb', fontWeight: 700, marginBottom: '8px' }}>
                     {new Date(note.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -262,6 +326,77 @@ function CalendarPage() {
                   </div>
                 </div>
               ))
+            )}
+
+            {/* Add Note Form */}
+            {isAddingNote && (
+              <div style={{
+                background: isDarkMode ? '#2d2d2d' : '#f4f7fc',
+                borderRadius: '12px', padding: '16px',
+                border: isDarkMode ? '1px solid #5577bb' : '1px solid #b3c6ef',
+                display: 'flex', flexDirection: 'column', gap: '10px'
+              }}>
+                <textarea
+                  autoFocus
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  placeholder="Type your note here..."
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: isDarkMode ? '1px solid #444' : '1px solid #d1dff5',
+                    background: isDarkMode ? '#1e1e1e' : '#ffffff',
+                    color: 'var(--text-main)',
+                    fontSize: '14px',
+                    lineHeight: 1.5,
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                />
+                {saveError && (
+                  <p style={{ margin: 0, color: '#e05c5c', fontSize: '13px' }}>{saveError}</p>
+                )}
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => { setIsAddingNote(false); setNewNoteText(''); setSaveError(''); }}
+                    style={{
+                      padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600,
+                      border: isDarkMode ? '1px solid #555' : '1px solid #ccc',
+                      background: 'transparent', color: 'var(--text-main)',
+                    }}>
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddNote}
+                    disabled={isSaving || !newNoteText.trim()}
+                    style={{
+                      padding: '8px 20px', borderRadius: '8px', cursor: isSaving || !newNoteText.trim() ? 'not-allowed' : 'pointer',
+                      fontWeight: 600, border: 'none',
+                      background: isSaving || !newNoteText.trim() ? '#7a8fc7' : '#2d4ef5',
+                      color: '#fff',
+                    }}>
+                    {isSaving ? 'Saving...' : 'Save Note'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Add Note Button */}
+            {!isAddingNote && (
+              <button
+                onClick={() => setIsAddingNote(true)}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '10px 18px', borderRadius: '10px',
+                  background: '#2d4ef5', color: '#fff',
+                  border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '14px',
+                }}>
+                + Add Note
+              </button>
             )}
           </div>
         </>

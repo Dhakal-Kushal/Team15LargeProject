@@ -233,9 +233,9 @@ exports.setApp = (app, client) => {
     });
 
     app.post('/api/addcard', async (req, res, next) => {
-        // incoming: text, jwtToken
+        // incoming: text, jwtToken, date (optional ISO string for calendar notes)
         // outgoing: error, jwtToken, id
-        const { text, jwtToken } = req.body;
+        const { text, jwtToken, date } = req.body;
 
         try {
             if (token.isExpired(jwtToken)) {
@@ -252,10 +252,19 @@ exports.setApp = (app, client) => {
 
         const newId = crypto.randomUUID();
 
+        // Use the provided date if valid, otherwise default to now
+        let createdAt = new Date();
+        if (date) {
+            const parsed = new Date(date);
+            if (!isNaN(parsed.getTime())) {
+                createdAt = parsed;
+            }
+        }
+
         const newNote = {
             id: newId,
             text: text,
-            createdAt: new Date(),
+            createdAt: createdAt,
             UserId: userId,
         };
 
