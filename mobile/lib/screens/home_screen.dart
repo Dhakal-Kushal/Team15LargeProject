@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String jwtToken;
+  const HomeScreen({super.key, required this.jwtToken});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -42,14 +45,60 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _createNote() {
-    if (_noteController.text.isNotEmpty) {
-      setState(() {
-        _notes.add(_noteController.text);
-        _noteController.clear();
-      });
-    }
+String _jwtToken = '';
+
+@override
+void initState() {
+  super.initState();
+  _jwtToken = widget.jwtToken;
+  _fetchNotes();
+}
+
+Future<void> _fetchNotes() async {
+  final response = await http.post(
+    Uri.parse('http://174.138.45.229:5000/api/searchcards'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'search': '',
+      'jwtToken': _jwtToken,
+    }),
+  );
+
+  final data = jsonDecode(response.body);
+  if (data['jwtToken'] != null && data['jwtToken'] != '') {
+    _jwtToken = data['jwtToken'];
   }
+
+  if (data['results'] != null) {
+    setState(() {
+      _notes.clear();
+      _notes.addAll((data['results'] as List).map((r) => r['text'] as String));
+    });
+  }
+}
+
+Future<void> _createNote() async {
+  if (_noteController.text.isEmpty) return;
+
+  final response = await http.post(
+    Uri.parse('http://174.138.45.229:5000/api/addcard'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'text': _noteController.text,
+      'jwtToken': _jwtToken,
+    }),
+  );
+
+  final data = jsonDecode(response.body);
+  if (data['jwtToken'] != null && data['jwtToken'] != '') {
+    _jwtToken = data['jwtToken'];
+  }
+
+  if (data['error'] == '') {
+    _noteController.clear();
+    _fetchNotes();
+  }
+}
 
   String _formatTime(int seconds) {
     final h = (seconds ~/ 3600).toString().padLeft(2, '0');
