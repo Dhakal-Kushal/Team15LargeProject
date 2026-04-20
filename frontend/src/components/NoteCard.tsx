@@ -36,6 +36,7 @@ function NoteCard() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const alertTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showIndicator, setShowIndicator] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [volume, setVolume] = useState(0.5); // Default volume at 50%
@@ -359,23 +360,23 @@ const closeSettings = () => {
         }
       `}</style>
 
-      {/* Login/Register Button - Only shows if not logged in */}
-{(userId === -1 || !userData.id) && (
-  <button 
-    style={loginBtnStyle} 
-    onClick={() => navigate('/login')}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = 'scale(1.05)';
-      e.currentTarget.style.background = '#1a3bbd';
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = 'scale(1)';
-      e.currentTarget.style.background = '#2d4ef5';
-    }}
-  >
-    Login / Register
-  </button>
-)}
+    {/* Login/Register Button - Only shows if not logged in */}
+    {(userId === -1 || !userData.id) && (
+    <button 
+      style={loginBtnStyle} 
+      onClick={() => navigate('/login')}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.05)';
+        e.currentTarget.style.background = '#1a3bbd';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
+        e.currentTarget.style.background = '#2d4ef5';
+      }}
+    >
+      Login / Register
+    </button>
+    )}
       
       {/* UI Controls */}
       <button style={themeBtnStyle} onClick={toggleDarkMode}>
@@ -559,40 +560,75 @@ const closeSettings = () => {
   </>
 )}
 
-      {/* Main Content Area */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '60px', minHeight: '100vh' }}>
-        <button onClick={() => {
-          // Sync the input box with the current timer before opening
-          setMinutesInput(String(Math.floor(secondsRef.current / 60)));
-          setTimeSettingOpen(true);
-        }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-          <div style={{ fontSize: '72px', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'monospace' }}>{time}</div>
+  {/* Main Content Area */}
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '60px', minHeight: '100vh' }}>
+    
+    {/* NEW: Timer Hint Indicator */}
+    {showIndicator && !timeSettingOpen && (
+      <div style={{
+        marginBottom: '-15px',
+        padding: '6px 12px',
+        background: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(45, 78, 245, 0.1)',
+        borderRadius: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        animation: 'fadeIn 0.5s ease-out'
+      }}>
+        <span style={{ fontSize: '13px', color: 'var(--text-sub)', fontWeight: 500 }}>
+          Click here to change timer settings
+        </span>
+        <button 
+          onClick={() => setShowIndicator(false)}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-sub)',
+            cursor: 'pointer',
+            fontSize: '14px',
+            padding: '0 4px',
+            display: 'flex',
+            alignItems: 'center'
+          }}
+        >
+          ✕
         </button>
+      </div>
+    )}
 
-{/* Reverted Start/Stop Button */}
-<button
-  onClick={startStopTimer}
-  className="btn"
-  style={{
-    marginTop: '0px',
-    marginBottom: '40px',
-    fontSize: '32px', 
-    fontWeight: 700, 
-    color: '#dce8f7', 
-    letterSpacing: '2px', 
-    lineHeight: 1, 
-    fontFamily: 'monospace',
-    zIndex: 101,
-    background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
-    width: '160px',
-    height: '50px',
-    cursor: 'pointer',
-    border: 'none',
-    boxShadow: 'none',
-  }}
->
-  {start ? 'Pause' : 'Start'}
-</button>
+    <button onClick={() => {
+      // Sync the input box with the current timer before opening
+      setMinutesInput(String(Math.floor(secondsRef.current / 60)));
+      setTimeSettingOpen(true);
+      setShowIndicator(false); // Hide the indicator permanently once they've opened settings
+    }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+      <div style={{ fontSize: '72px', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'monospace' }}>{time}</div>
+    </button>
+
+    {/* Reverted Start/Stop Button */}
+    <button
+      onClick={startStopTimer}
+      className="btn"
+      style={{
+        marginTop: '0px',
+        marginBottom: '40px',
+        fontSize: '32px', 
+        fontWeight: 700, 
+        color: '#dce8f7', 
+        letterSpacing: '2px', 
+        lineHeight: 1, 
+        fontFamily: 'monospace',
+        zIndex: 101,
+        background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
+        width: '160px',
+        height: '50px',
+        cursor: 'pointer',
+        border: 'none',
+        boxShadow: 'none',
+      }}
+    >
+      {start ? 'Pause' : 'Start'}
+    </button>
 
   {/* 3. CHANGE: Increased height of the Note Textarea */}
   <textarea 
