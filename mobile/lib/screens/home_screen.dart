@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'calendar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String jwtToken;
@@ -19,7 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Note variable
   final TextEditingController _noteController = TextEditingController();
-  final List<String> _notes = [];
+  final List<Map<String, dynamic>> _notes = [];
 
   void _startStop() {
     if (_isRunning) {
@@ -66,13 +67,21 @@ Future<void> _fetchNotes() async {
 
   final data = jsonDecode(response.body);
   if (data['jwtToken'] != null && data['jwtToken'] != '') {
-    _jwtToken = data['jwtToken'];
+    _jwtToken = data['jwtToken'].toString();;
   }
 
   if (data['results'] != null) {
     setState(() {
       _notes.clear();
-      _notes.addAll((data['results'] as List).map((r) => r['text'] as String));
+      for (var r in data['results']) {
+        _notes.add({
+          'id': r['id']?.toString() ?? '',
+          'text': r['text']?.toString() ?? '',
+          'createdAt': r['createdAt'] is Map 
+              ? r['createdAt']['\$date']?.toString() ?? ''
+              : r['createdAt']?.toString() ?? '',
+        });
+      }
     });
   }
 }
@@ -91,7 +100,7 @@ Future<void> _createNote() async {
 
   final data = jsonDecode(response.body);
   if (data['jwtToken'] != null && data['jwtToken'] != '') {
-    _jwtToken = data['jwtToken'];
+    _jwtToken = data['jwtToken'].toString();
   }
 
   if (data['error'] == '') {
@@ -119,6 +128,14 @@ Future<void> _createNote() async {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Welcome to the Study App'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(
+              builder: (_) => CalendarScreen(jwtToken: widget.jwtToken),
+            )),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -172,7 +189,7 @@ Future<void> _createNote() async {
               Expanded(
                 child: ListView.builder(
                   itemCount: _notes.length,
-                  itemBuilder: (context, index) => _NoteCard(note: _notes[index]),
+                  itemBuilder: (context, index) => _NoteCard(note: _notes[index]['text'].toString()),
                 ),
               ),
             ]
