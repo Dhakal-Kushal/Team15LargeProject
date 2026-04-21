@@ -1,31 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'dart:async';
+import 'package:audioplayers/audioplayers.dart';
+import 'calendar_screen.dart'; // Make sure this import is correct
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String jwtToken;
+  final Map<String, dynamic> userData;
+
+  const HomeScreen({
+    super.key, 
+    required this.jwtToken, 
+    required this.userData
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Timer variables
   int _seconds = 1800;
+  int _initialSeconds = 1800;
   bool _isRunning = false;
   Timer? _timer;
+  double _volume = 0.5;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // Note variable
+  bool _showIndicator = true;
+  bool _isDarkMode = true;
   final TextEditingController _noteController = TextEditingController();
-  final List<String> _notes = [];
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  
+  final List<dynamic> _notes = []; 
+  late String _jwtToken;
+
+  @override
+  void initState() {
+    super.initState();
+    _jwtToken = widget.jwtToken;
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _noteController.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  String _formatTime(int totalSeconds) {
+    final m = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+    final s = (totalSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
 
   void _startStop() {
+    _audioPlayer.stop();
     if (_isRunning) {
       _timer?.cancel();
     } else {
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (_seconds == 0) {
+        if (_seconds <= 0) {
           _timer?.cancel();
-          setState(() => _isRunning = false);
+          setState(() {
+            _isRunning = false;
+            _seconds = _initialSeconds;
+          });
+          _playAlarm();
         } else {
           setState(() => _seconds--);
         }
@@ -34,154 +76,265 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isRunning = !_isRunning);
   }
 
-  void _reset() {
-    _timer?.cancel();
-    setState(() {
-      _seconds = 1800;
-      _isRunning = false;
-    });
+  void _playAlarm() async {
+    await _audioPlayer.setVolume(_volume);
+    await _audioPlayer.play(AssetSource('TimerSound.mp3'));
   }
 
-  void _createNote() {
-    if (_noteController.text.isNotEmpty) {
-      setState(() {
-        _notes.add(_noteController.text);
-        _noteController.clear();
-      });
-    }
+  void _playTestSound() async {
+    await _audioPlayer.setVolume(_volume);
+    await _audioPlayer.play(AssetSource('TimerSound.mp3'));
   }
 
-  String _formatTime(int seconds) {
-    final h = (seconds ~/ 3600).toString().padLeft(2, '0');
-    final m = ((seconds % 3600) ~/ 60).toString().padLeft(2, '0');
-    final s = (seconds % 60).toString().padLeft(2, '0');
-    return '$h:$m:$s';
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _noteController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Welcome to the Study App'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Timer section
-            const Spacer(),
-            Text(
-              _formatTime(_seconds),
-              style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: _startStop,
-                  child: Text(_isRunning ? 'Stop' : 'Start'),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton(
-                  onPressed: _reset,
-                  child: const Text('Reset'),
-                ),
-              ],
-            ),
-            const Spacer(),
-
-            // Notes section
-            TextField(
-              controller: _noteController,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Type your note here...',
-                border: OutlineInputBorder(),
+  void _showTimerSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Timer Settings", style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildTimeButton(15, setModalState),
+                      _buildTimeButton(30, setModalState),
+                      _buildTimeButton(45, setModalState),
+                      _buildTimeButton(60, setModalState),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Icon(Icons.volume_down, color: _isDarkMode ? Colors.white : Colors.black),
+                      Expanded(
+                        child: Slider(
+                          value: _volume,
+                          onChanged: (val) {
+                            setModalState(() => _volume = val);
+                            setState(() => _volume = val);
+                          },
+                        ),
+                      ),
+                      IconButton(icon: Icon(Icons.play_arrow, color: _isDarkMode ? Colors.white : Colors.black), onPressed: _playTestSound)
+                    ],
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _createNote,
-              child: const Text('Create Note'),
-            ),
+            );
+          },
+        );
+      },
+    );
+  }
 
-            // Notes list
-            if (_notes.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Saved Notes:', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _notes.length,
-                  itemBuilder: (context, index) => _NoteCard(note: _notes[index]),
-                ),
-              ),
-            ]
-          ],
-        ),
+  Widget _buildTimeButton(int mins, StateSetter setModalState) {
+    bool isSelected = (_initialSeconds == mins * 60);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: ChoiceChip(
+        label: Text("${mins}m"),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) {
+            setModalState(() {
+              _initialSeconds = mins * 60;
+              _seconds = _initialSeconds;
+              _isRunning = false;
+              _timer?.cancel();
+            });
+            setState(() {});
+          }
+        },
       ),
     );
   }
-}
 
-class _NoteCard extends StatefulWidget {
-  final String note;
-  const _NoteCard({required this.note});
+  String _extractToken(dynamic tokenData) {
+    if (tokenData == null) return _jwtToken;
+    if (tokenData is Map) {
+      return tokenData['accessToken']?.toString() ?? tokenData['jwtToken']?.toString() ?? _jwtToken;
+    }
+    return tokenData.toString();
+  }
 
-  @override
-  State<_NoteCard> createState() => _NoteCardState();
-}
+  Future<void> _createNote() async {
+    final String idStr = widget.userData['id']?.toString() ?? "-1";
+    final String noteText = _noteController.text.trim();
+    if (idStr == "-1" || idStr == "null" || noteText.isEmpty) return;
 
-class _NoteCardState extends State<_NoteCard> {
-  bool _expanded = false;
+    try {
+      final response = await http.post(
+        Uri.parse('http://174.138.45.229:5000/api/addcard'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'userId': idStr, 'text': noteText, 'jwtToken': _jwtToken}),
+      );
+      if (!mounted) return;
+      final data = jsonDecode(response.body);
+      if (data['jwtToken'] != null) setState(() => _jwtToken = _extractToken(data['jwtToken']));
+      if (data['error'] == null || data['error'] == "") {
+        setState(() => _notes.insert(0, {'text': noteText, 'id': data['id']}));
+        _noteController.clear();
+      }
+    } catch (e) { debugPrint("Error: $e"); }
+  }
+
+  Future<void> _deleteNote(String noteId) async {
+    try {
+      setState(() => _notes.removeWhere((note) => note['id'].toString() == noteId));
+      await http.post(
+        Uri.parse('http://174.138.45.229:5000/api/deletecard'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': noteId, 'jwtToken': _jwtToken}),
+      );
+    } catch (e) { debugPrint("Error: $e"); }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final lines = widget.note.split('\n');
-    final hasMore = lines.length > 1 || widget.note.length > 60;
+    final String idStr = widget.userData['id']?.toString() ?? "-1";
+    final bool isLoggedIn = idStr != "-1" && idStr != "null" && idStr != "";
+    final bgColor = _isDarkMode ? const Color(0xFF121212) : Colors.white;
+    final textColor = _isDarkMode ? Colors.white : Colors.black;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: bgColor,
+      drawer: Drawer(
+        backgroundColor: _isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    lines.first,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-                if (hasMore)
-                  IconButton(
-                    icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
-                    onPressed: () => setState(() => _expanded = !_expanded),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-              ],
-            ),
-            if (_expanded && hasMore)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(widget.note),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 60, 16, 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(isLoggedIn ? "Session Notes (${_notes.length})" : "Guest Mode", 
+                       style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18)),
+                  IconButton(icon: Icon(Icons.close, color: textColor), onPressed: () => Navigator.pop(context)),
+                ],
               ),
+            ),
+            Expanded(
+              child: isLoggedIn 
+                ? ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _notes.length,
+                    itemBuilder: (context, i) => ListTile(
+                      title: Text(_notes[i]['text'] ?? "", style: TextStyle(color: textColor)),
+                      trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => _deleteNote(_notes[i]['id'].toString())),
+                    ),
+                  )
+                : const Center(child: Text("Log in to see notes")),
+            ),
           ],
         ),
+      ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 50),
+                  if (_showIndicator)
+                    Transform.translate(
+                      offset: const Offset(0, -10), 
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: const Color(0xFF2d4ef5).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text("Click here to change timer settings", style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13)),
+                            const SizedBox(width: 8),
+                            GestureDetector(onTap: () => setState(() => _showIndicator = false), child: Icon(Icons.close, size: 16, color: textColor.withOpacity(0.6))),
+                          ],
+                        ),
+                      ),
+                    ),
+                  GestureDetector(
+                    onTap: _showTimerSettings,
+                    child: Text(_formatTime(_seconds), style: TextStyle(fontSize: 72, fontWeight: FontWeight.bold, color: textColor, fontFamily: 'monospace', height: 1.0)),
+                  ),
+                  const SizedBox(height: 5),
+                  GestureDetector(
+                    onTap: _startStop,
+                    child: Container(
+                      width: 160, height: 50,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4C00FF), Color(0xFF1E006E)]),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(_isRunning ? 'PAUSE' : 'START', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 600),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        height: 300,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: _isDarkMode ? Colors.white.withOpacity(0.05) : const Color(0xFFEEF4FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF6c8ef2), width: 2), 
+                        ),
+                        child: TextField(
+                          controller: _noteController,
+                          maxLines: null,
+                          style: TextStyle(color: textColor, fontSize: 18),
+                          decoration: const InputDecoration(hintText: "Write a quick note", border: InputBorder.none),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _createNote,
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2d4ef5), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
+                    child: const Text("Create Note", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(height: 100), 
+                ],
+              ),
+            ),
+          ),
+          Positioned(top: 16, left: 16, child: FloatingActionButton.small(heroTag: "m", backgroundColor: const Color(0xFF2d4ef5), onPressed: () => _scaffoldKey.currentState?.openDrawer(), child: const Icon(Icons.menu, color: Colors.white))),
+          Positioned(top: 16, right: 16, child: FloatingActionButton.small(heroTag: "t", backgroundColor: _isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, onPressed: () => setState(() => _isDarkMode = !_isDarkMode), child: Icon(_isDarkMode ? Icons.nightlight_round : Icons.wb_sunny, color: _isDarkMode ? Colors.yellow : Colors.orange))),
+          if (!isLoggedIn)
+            Positioned(bottom: 16, left: 16, child: ElevatedButton(onPressed: () => Navigator.pushReplacementNamed(context, '/login'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2d4ef5), shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)), child: const Text("Login / Register", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
+          
+          // --- UPDATED CALENDAR BUTTON ---
+          Positioned(
+            bottom: 16, 
+            right: 16, 
+            child: FloatingActionButton(
+              heroTag: "c", 
+              backgroundColor: const Color(0xFF2d4ef5), 
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CalendarScreen(jwtToken: _jwtToken),
+                  ),
+                );
+              }, 
+              child: const Icon(Icons.calendar_month, color: Colors.white)
+            )
+          ),
+        ],
       ),
     );
   }
