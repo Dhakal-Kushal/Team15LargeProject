@@ -184,6 +184,7 @@ const applyTimeChange = () => {
   }
 
   async function deleteNote(id: string) {
+    if (!window.confirm('Delete this note?')) return;
     setNotes((prev) => prev.filter((n) => n.id !== id));
     try {
       const response = await fetch(buildPath('api/deletecard'), {
@@ -193,8 +194,8 @@ const applyTimeChange = () => {
       });
       const data = await response.json();
       if (data.jwtToken) storeToken(data.jwtToken);
-    } catch { 
-      loadNotes(); 
+    } catch {
+      loadNotes();
     }
   }
 
