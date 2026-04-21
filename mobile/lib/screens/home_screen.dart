@@ -173,7 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://174.138.45.229:5000/api/addcard'),
+        Uri.parse('https://team15study.com/api/addcard'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'userId': idStr, 'text': noteText, 'jwtToken': _jwtToken}),
       );
@@ -191,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       setState(() => _notes.removeWhere((note) => note['id'].toString() == noteId));
       await http.post(
-        Uri.parse('http://174.138.45.229:5000/api/deletecard'),
+        Uri.parse('https://team15study.com/api/deletecard'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'id': noteId, 'jwtToken': _jwtToken}),
       );

@@ -35,7 +35,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _fetchAllNotes() async {
     final response = await http.post(
-      Uri.parse('http://174.138.45.229:5000/api/searchcards'),
+      Uri.parse('https://team15study.com/api/searchcards'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'search': '', 'jwtToken': _jwtToken}),
     );
@@ -162,7 +162,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             time.minute,
                           );
                           final response = await http.post(
-                            Uri.parse('http://174.138.45.229:5000/api/addcard'),
+                            Uri.parse('https://team15study.com/api/addcard'),
                             headers: {'Content-Type': 'application/json'},
                             body: jsonEncode({
                               'text': text,
@@ -178,7 +178,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         },
                         onDelete: (id) async {
                           final response = await http.post(
-                            Uri.parse('http://174.138.45.229:5000/api/deletecard'),
+                            Uri.parse('https://team15study.com/api/deletecard'),
                             headers: {'Content-Type': 'application/json'},
                             body: jsonEncode({
                               'id': id,
@@ -198,7 +198,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         onEdit: (id, newText) async {
                           // delete old note
                           final deleteResponse = await http.post(
-                            Uri.parse('http://174.138.45.229:5000/api/deletecard'),
+                            Uri.parse('https://team15study.com/api/deletecard'),
                             headers: {'Content-Type': 'application/json'},
                             body: jsonEncode({'id': id, 'jwtToken': _jwtToken}),
                           );
@@ -209,7 +209,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                           // recreate with same date
                           final addResponse = await http.post(
-                            Uri.parse('http://174.138.45.229:5000/api/addcard'),
+                            Uri.parse('https://team15study.com/api/addcard'),
                             headers: {'Content-Type': 'application/json'},
                             body: jsonEncode({
                               'text': newText,

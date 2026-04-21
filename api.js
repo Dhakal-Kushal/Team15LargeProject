@@ -5,7 +5,7 @@ var token = require('./createJWT.js');
 var { sendMail } = require('./sendMail.js');
 
 const SALT_ROUNDS = 10;
-const APP_URL = process.env.APP_URL || 'http://174.138.45.229';
+const APP_URL = process.env.APP_URL || 'https://team15study.com/';
 
 function generateEmailToken() {
     return crypto.randomBytes(32).toString('hex');
