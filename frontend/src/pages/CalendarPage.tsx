@@ -383,7 +383,7 @@ function CalendarPage() {
                         }}
                         title="Edit note"
                       >
-                        ✎
+                        ✏️
                       </button>
                       <button
                         onClick={() => handleDeleteNote(note.id)}
