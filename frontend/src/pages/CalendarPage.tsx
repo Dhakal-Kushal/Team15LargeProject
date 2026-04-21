@@ -62,24 +62,6 @@ function CalendarPage() {
     }
   }
 
-  async function handleDeleteNote(id: string): Promise<void> {
-    const confirm = window.confirm('Are you sure you want to delete this note?');
-    if (!confirm) return;
-
-    try {
-      const response = await fetch(buildPath('api/deletecard'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, jwtToken: retrieveToken() }),
-      });
-      const data = await response.json();
-      if (data.jwtToken) storeToken(data.jwtToken);
-      setNotes((prev) => prev.filter((n) => n.id !== id));
-    } catch (err) {
-      console.error('Failed to delete note:', err);
-    }
-  }
-
   async function handleAddNote(): Promise<void> {
     if (!newNoteText.trim() || !selectedDateKey) return;
 
@@ -140,6 +122,39 @@ function CalendarPage() {
       }
     } catch (err) {
       console.error('Failed to delete note:', err);
+    }
+  }
+
+  async function handleEditNote(id: string, currentText: string, createdAt: Date): Promise<void> {
+    const newText = window.prompt('Edit your note:', currentText);
+    if (!newText || newText.trim() === currentText) return;
+
+    try {
+      // delete old note
+      const deleteResponse = await fetch(buildPath('api/deletecard'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, jwtToken: retrieveToken() }),
+      });
+      const deleteData = await deleteResponse.json();
+      if (deleteData.jwtToken) storeToken(deleteData.jwtToken);
+
+      // recreate with same date
+      const addResponse = await fetch(buildPath('api/addcard'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: newText.trim(),
+          jwtToken: retrieveToken(),
+          date: new Date(createdAt).toISOString(),
+        }),
+      });
+      const addData = await addResponse.json();
+      if (addData.jwtToken) storeToken(addData.jwtToken);
+
+      await loadNotes();
+    } catch (err) {
+      console.error('Failed to edit note:', err);
     }
   }
 
@@ -354,41 +369,37 @@ function CalendarPage() {
                   background: isDarkMode ? '#2d2d2d' : '#f4f7fc',
                   borderRadius: '12px', padding: '16px',
                   border: isDarkMode ? '1px solid #444' : '1px solid #e4eaf5',
-                  position: 'relative'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <div style={{ fontSize: '12px', color: '#5577bb', fontWeight: 700 }}>
                       {new Date(note.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </div>
-                    <button
-                      onClick={() => handleDeleteNote(note.id)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#e53e3e',
-                        fontSize: '18px',
-                        padding: '0 4px',
-                      }}
-                      title="Delete note"
-                    >
-                      🗑
-                    </button>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        onClick={() => handleEditNote(note.id, note.text, note.createdAt)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: '#2d4ef5', fontSize: '18px', padding: '0 4px',
+                        }}
+                        title="Edit note"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: '#e53e3e', fontSize: '18px', padding: '0 4px',
+                        }}
+                        title="Delete note"
+                      >
+                        🗑
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: 1.5, paddingRight: '24px' }}>
+                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: 1.5 }}>
                     {note.text}
                   </div>
-                  <button
-                    aria-label="Delete note"
-                    onClick={() => handleDeleteNote(note.id)}
-                    style={{
-                      position: 'absolute', top: '12px', right: '12px',
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: '#e53e3e', fontSize: '18px', fontWeight: 700, lineHeight: 1
-                    }}
-                  >
-                    &#x2715;
-                  </button>
                 </div>
               ))
             )}
