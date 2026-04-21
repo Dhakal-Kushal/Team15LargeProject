@@ -46,6 +46,34 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _deleteNote(String id) async {
+  final response = await http.post(
+    Uri.parse('http://174.138.45.229:5000/api/deletecard'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({
+      'id': id,
+      'jwtToken': _jwtToken,
+    }),
+  );
+
+  final data = jsonDecode(response.body);
+  if (data['jwtToken'] != null) {
+    _jwtToken = _extractToken(data['jwtToken']);
+  }
+  await _fetchNotes();
+}
+
+  String _extractToken(dynamic raw) {
+    if (raw == null) return _jwtToken;
+    if (raw is Map) return raw['accessToken']?.toString() ?? _jwtToken;
+    final str = raw.toString();
+    if (str.contains('accessToken')) {
+      final decoded = jsonDecode(str);
+      return decoded['accessToken']?.toString() ?? _jwtToken;
+    }
+    return str;
+  }
+
 String _jwtToken = '';
 
 @override
@@ -67,21 +95,23 @@ Future<void> _fetchNotes() async {
 
   final data = jsonDecode(response.body);
   if (data['jwtToken'] != null && data['jwtToken'] != '') {
-    _jwtToken = data['jwtToken'].toString();;
+    _jwtToken = _extractToken(data['jwtToken']);
   }
 
   if (data['results'] != null) {
+    final mapped = (data['results'] as List).map((r) => {
+      'id': r['id']?.toString() ?? '',
+      'text': r['text']?.toString() ?? '',
+      'createdAt': r['createdAt'] is Map 
+          ? r['createdAt']['\$date']?.toString() ?? ''
+          : r['createdAt']?.toString() ?? '',
+    }).toList();
+    
+    mapped.sort((a, b) => b['createdAt']!.compareTo(a['createdAt']!));
+    
     setState(() {
       _notes.clear();
-      for (var r in data['results']) {
-        _notes.add({
-          'id': r['id']?.toString() ?? '',
-          'text': r['text']?.toString() ?? '',
-          'createdAt': r['createdAt'] is Map 
-              ? r['createdAt']['\$date']?.toString() ?? ''
-              : r['createdAt']?.toString() ?? '',
-        });
-      }
+      _notes.addAll(mapped);
     });
   }
 }
@@ -95,17 +125,19 @@ Future<void> _createNote() async {
     body: jsonEncode({
       'text': _noteController.text,
       'jwtToken': _jwtToken,
+      'date': DateTime.now().toIso8601String(),
     }),
   );
 
   final data = jsonDecode(response.body);
-  if (data['jwtToken'] != null && data['jwtToken'] != '') {
-    _jwtToken = data['jwtToken'].toString();
+
+  if (data['jwtToken'] != null && data['jwtToken'].toString() != '') {
+    _jwtToken = _extractToken(data['jwtToken']);
   }
 
   if (data['error'] == '') {
     _noteController.clear();
-    _fetchNotes();
+    await _fetchNotes();
   }
 }
 
@@ -132,7 +164,7 @@ Future<void> _createNote() async {
           IconButton(
             icon: const Icon(Icons.calendar_month),
             onPressed: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => CalendarScreen(jwtToken: widget.jwtToken),
+              builder: (_) => CalendarScreen(jwtToken: _jwtToken),
             )),
           ),
         ],
@@ -189,7 +221,11 @@ Future<void> _createNote() async {
               Expanded(
                 child: ListView.builder(
                   itemCount: _notes.length,
-                  itemBuilder: (context, index) => _NoteCard(note: _notes[index]['text'].toString()),
+                  itemBuilder: (context, index) => _NoteCard(
+                    note: _notes[index]['text'].toString(),
+                    id: _notes[index]['id'].toString(),
+                    onDelete: () => _deleteNote(_notes[index]['id'].toString()),
+                  ),
                 ),
               ),
             ]
@@ -202,7 +238,9 @@ Future<void> _createNote() async {
 
 class _NoteCard extends StatefulWidget {
   final String note;
-  const _NoteCard({required this.note});
+  final String id;
+  final VoidCallback onDelete;
+  const _NoteCard({required this.note, required this.id, required this.onDelete});
 
   @override
   State<_NoteCard> createState() => _NoteCardState();
@@ -239,6 +277,12 @@ class _NoteCardState extends State<_NoteCard> {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                  onPressed: widget.onDelete,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
               ],
             ),
             if (_expanded && hasMore)

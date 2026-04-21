@@ -15,6 +15,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
   DateTime _focusedMonth = DateTime.now();
   Map<String, List<Map<String, dynamic>>> _notesByDate = {};
 
+  String _extractToken(dynamic raw) {
+    if (raw == null) return _jwtToken;
+    if (raw is Map) return raw['accessToken']?.toString() ?? _jwtToken;
+    final str = raw.toString();
+    if (str.contains('accessToken')) {
+      final decoded = jsonDecode(str);
+      return decoded['accessToken']?.toString() ?? _jwtToken;
+    }
+    return str;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -30,17 +41,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
 
     final data = jsonDecode(response.body);
-    print('results: ${data['results']}'); // add this line
     if (data['jwtToken'] != null && data['jwtToken'] != '') {
-      _jwtToken = data['jwtToken'].toString();
+      _jwtToken = _extractToken(data['jwtToken']);
     }
 
     if (data['results'] != null) {
       final Map<String, List<Map<String, dynamic>>> grouped = {};
       for (var note in data['results']) {
-        final date = DateTime.parse(note['createdAt']).toLocal();
+        final date = DateTime.parse(note['createdAt']);
         final key = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
         grouped.putIfAbsent(key, () => []).add(note);
+      }
+      for (var key in grouped.keys) {
+        grouped[key]!.sort((a, b) => b['createdAt'].toString().compareTo(a['createdAt'].toString()));
       }
       setState(() => _notesByDate = grouped);
     }
@@ -113,7 +126,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 7,
-                  childAspectRatio: 0.75,
+                  mainAxisExtent: 100,
                 ),
                 itemCount: rows * 7,
                 itemBuilder: (context, index) {
@@ -131,16 +144,67 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       context: context,
                       builder: (_) => _NoteDialog(
                         dateKey: dateKey,
-                        notes: notes,
+                        initialNotes: notes,
                         onSave: (text) async {
                           final response = await http.post(
                             Uri.parse('http://174.138.45.229:5000/api/addcard'),
                             headers: {'Content-Type': 'application/json'},
-                            body: jsonEncode({'text': text, 'jwtToken': _jwtToken}),
+                            body: jsonEncode({
+                              'text': text,
+                              'jwtToken': _jwtToken,
+                              'date': '${dateKey}T${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:00.000',
+                            }),
                           );
                           final data = jsonDecode(response.body);
-                          if (data['jwtToken'] != null && data['jwtToken'] != '') {
-                            _jwtToken = data['jwtToken'].toString();
+                          if (data['jwtToken'] != null) {
+                            _jwtToken = _extractToken(data['jwtToken']);
+                          }
+                          await _fetchAllNotes();
+                        },
+                        onDelete: (id) async {
+                          final response = await http.post(
+                            Uri.parse('http://174.138.45.229:5000/api/deletecard'),
+                            headers: {'Content-Type': 'application/json'},
+                            body: jsonEncode({
+                              'id': id,
+                              'jwtToken': _jwtToken,
+                            }),
+                          );
+                          final data = jsonDecode(response.body);
+                          if (data['jwtToken'] != null) {
+                            _jwtToken = _extractToken(data['jwtToken']);
+                          }
+                          await _fetchAllNotes();
+                        },
+                        onRefresh: () async {
+                          await _fetchAllNotes();
+                          return _notesByDate[dateKey] ?? [];
+                        },
+                        onEdit: (id, newText) async {
+                          // delete old note
+                          final deleteResponse = await http.post(
+                            Uri.parse('http://174.138.45.229:5000/api/deletecard'),
+                            headers: {'Content-Type': 'application/json'},
+                            body: jsonEncode({'id': id, 'jwtToken': _jwtToken}),
+                          );
+                          final deleteData = jsonDecode(deleteResponse.body);
+                          if (deleteData['jwtToken'] != null) {
+                            _jwtToken = _extractToken(deleteData['jwtToken']);
+                          }
+
+                          // recreate with same date
+                          final addResponse = await http.post(
+                            Uri.parse('http://174.138.45.229:5000/api/addcard'),
+                            headers: {'Content-Type': 'application/json'},
+                            body: jsonEncode({
+                              'text': newText,
+                              'jwtToken': _jwtToken,
+                              'date': '${dateKey}T12:00:00.000Z',
+                            }),
+                          );
+                          final addData = jsonDecode(addResponse.body);
+                          if (addData['jwtToken'] != null) {
+                            _jwtToken = _extractToken(addData['jwtToken']);
                           }
                           await _fetchAllNotes();
                         },
@@ -157,6 +221,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         padding: const EdgeInsets.all(4),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min, // add this line
                           children: [
                             Text('$dayNum',
                                 style: const TextStyle(
@@ -198,13 +263,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
 class _NoteDialog extends StatefulWidget {
   final String dateKey;
-  final List<Map<String, dynamic>> notes;
+  final List<Map<String, dynamic>> initialNotes;
   final Future<void> Function(String text) onSave;
+  final Future<void> Function(String id) onDelete;
+  final Future<List<Map<String, dynamic>>> Function() onRefresh;
+  final Future<void> Function(String id, String newText) onEdit;
 
   const _NoteDialog({
     required this.dateKey,
-    required this.notes,
+    required this.initialNotes,
     required this.onSave,
+    required this.onDelete,
+    required this.onRefresh,
+    required this.onEdit,
   });
 
   @override
@@ -215,13 +286,25 @@ class _NoteDialogState extends State<_NoteDialog> {
   bool _showInput = false;
   final TextEditingController _controller = TextEditingController();
   bool _saving = false;
+  late List<Map<String, dynamic>> _notes;
+
+  @override
+  void initState() {
+    super.initState();
+    _notes = List.from(widget.initialNotes);
+  }
 
   String _formatTime(String isoDate) {
-    final dt = DateTime.parse(isoDate).toLocal();
+    final dt = DateTime.parse(isoDate);
     final h = dt.hour > 12 ? dt.hour - 12 : dt.hour == 0 ? 12 : dt.hour;
     final m = dt.minute.toString().padLeft(2, '0');
     final period = dt.hour >= 12 ? 'PM' : 'AM';
     return '$h:$m $period';
+  }
+
+  Future<void> _refresh() async {
+    final updated = await widget.onRefresh();
+    setState(() => _notes = updated);
   }
 
   @override
@@ -234,13 +317,11 @@ class _NoteDialogState extends State<_NoteDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Notes for ${widget.dateKey}',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
@@ -250,17 +331,15 @@ class _NoteDialogState extends State<_NoteDialog> {
               ],
             ),
             const SizedBox(height: 12),
-            // Notes list
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 300),
-              child: widget.notes.isEmpty
-                  ? const Text('No notes for this day.',
-                      style: TextStyle(color: Colors.grey))
+              child: _notes.isEmpty
+                  ? const Text('No notes for this day.', style: TextStyle(color: Colors.grey))
                   : ListView.builder(
                       shrinkWrap: true,
-                      itemCount: widget.notes.length,
+                      itemCount: _notes.length,
                       itemBuilder: (context, i) {
-                        final note = widget.notes[i];
+                        final note = _notes[i];
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
@@ -271,15 +350,65 @@ class _NoteDialogState extends State<_NoteDialog> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                _formatTime(note['createdAt']),
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.blue.shade600,
-                                    fontWeight: FontWeight.bold),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _formatTime(note['createdAt'].toString()),
+                                    style: TextStyle(fontSize: 11, color: Colors.blue.shade600, fontWeight: FontWeight.bold),
+                                  ),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 16),
+                                        onPressed: () async {
+                                          final editController = TextEditingController(text: note['text'].toString());
+                                          await showDialog(
+                                            context: context,
+                                            builder: (_) => AlertDialog(
+                                              title: const Text('Edit Note'),
+                                              content: TextField(
+                                                controller: editController,
+                                                maxLines: 3,
+                                                decoration: const InputDecoration(border: OutlineInputBorder()),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () async {
+                                                    if (editController.text.isEmpty) return;
+                                                    await widget.onEdit(note['id'].toString(), editController.text);
+                                                    await _refresh();
+                                                    if (mounted) Navigator.pop(context);
+                                                  },
+                                                  child: const Text('Save'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          editController.dispose();
+                                        },
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 16),
+                                        onPressed: () async {
+                                          await widget.onDelete(note['id'].toString());
+                                          await _refresh();
+                                        },
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 4),
-                              Text(note['text']),
+                              Text(note['text'].toString()),
                             ],
                           ),
                         );
@@ -287,15 +416,13 @@ class _NoteDialogState extends State<_NoteDialog> {
                     ),
             ),
             const SizedBox(height: 12),
-            // Add note input
             if (_showInput) ...[
               TextField(
                 controller: _controller,
                 maxLines: 3,
                 decoration: InputDecoration(
                   hintText: 'Type your note here...',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -303,11 +430,10 @@ class _NoteDialogState extends State<_NoteDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () =>
-                        setState(() {
-                          _showInput = false;
-                          _controller.clear();
-                        }),
+                    onPressed: () => setState(() {
+                      _showInput = false;
+                      _controller.clear();
+                    }),
                     child: const Text('Cancel'),
                   ),
                   const SizedBox(width: 8),
@@ -318,7 +444,12 @@ class _NoteDialogState extends State<_NoteDialog> {
                             if (_controller.text.isEmpty) return;
                             setState(() => _saving = true);
                             await widget.onSave(_controller.text);
-                            if (mounted) Navigator.pop(context);
+                            await _refresh();
+                            setState(() {
+                              _saving = false;
+                              _showInput = false;
+                              _controller.clear();
+                            });
                           },
                     child: const Text('Save Note'),
                   ),
