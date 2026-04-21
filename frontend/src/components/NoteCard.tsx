@@ -335,7 +335,8 @@ const closeSettings = () => {
         }}>
           <span style={{ fontSize: '18px' }}>⚠️</span>
           {alertMessage} {/* <--- Dynamic message shows here */}
-          <button 
+          <button
+            aria-label="Dismiss alert"
             onClick={() => setShowAlert(false)}
             style={{
               background: 'none',
@@ -379,16 +380,16 @@ const closeSettings = () => {
     )}
       
       {/* UI Controls */}
-      <button style={themeBtnStyle} onClick={toggleDarkMode}>
+      <button aria-label="Toggle light and dark mode" style={themeBtnStyle} onClick={toggleDarkMode}>
         {isDarkMode ? '🌙' : '☀️'}
       </button>
 
-      <button style={calendarBtnStyle} onClick={handleCalendarClick}>
+      <button aria-label="Open calendar" style={calendarBtnStyle} onClick={handleCalendarClick}>
         <Calendar3 size={22} />
       </button>
 
     {/* Side Panel Toggle Button - Always Visible */}
-    <button style={toggleBtnStyle} onClick={() => setPanelOpen(true)}>
+    <button aria-label="Open notes panel" style={toggleBtnStyle} onClick={() => setPanelOpen(true)}>
       <span>&#9776;</span>
       {/* Only show badge if logged in and there are notes */}
       {userId !== -1 && notes.length > 0 && (
@@ -404,7 +405,7 @@ const closeSettings = () => {
     <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
       {userId !== -1 ? `My Notes (${notes.length})` : 'Guest Mode'}
     </span>
-    <button onClick={() => setPanelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)' }}>&#x2715;</button>
+    <button aria-label="Close notes panel" onClick={() => setPanelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)' }}>&#x2715;</button>
   </div>
   
   <div style={{ overflowY: 'auto', flex: 1, padding: '12px' }}>
@@ -414,7 +415,7 @@ const closeSettings = () => {
         <div key={note.id} style={{ background: 'var(--note-bg)', borderRadius: '10px', padding: '12px', marginBottom: '10px', position: 'relative', border: '1px solid var(--border-color)' }}>
           <div style={{ fontSize: '11px', color: 'var(--text-sub)', marginBottom: '4px' }}>{note.createdAt.toLocaleDateString()}</div>
           <p style={{ fontSize: '14px', color: 'var(--text-main)', margin: 0 }}>{note.text}</p>
-          <button onClick={() => deleteNote(note.id)} style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#aaa' }}>&#x2715;</button>
+          <button aria-label="Delete note" onClick={() => deleteNote(note.id)} style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#aaa' }}>&#x2715;</button>
         </div>
       ))
     ) : (
