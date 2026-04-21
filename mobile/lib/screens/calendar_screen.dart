@@ -145,14 +145,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       builder: (_) => _NoteDialog(
                         dateKey: dateKey,
                         initialNotes: notes,
-                        onSave: (text) async {
+                        onSave: (text, time) async {
+                          final date = DateTime(
+                            int.parse(dateKey.split('-')[0]),
+                            int.parse(dateKey.split('-')[1]),
+                            int.parse(dateKey.split('-')[2]),
+                            time.hour,
+                            time.minute,
+                          );
                           final response = await http.post(
                             Uri.parse('http://174.138.45.229:5000/api/addcard'),
                             headers: {'Content-Type': 'application/json'},
                             body: jsonEncode({
                               'text': text,
                               'jwtToken': _jwtToken,
-                              'date': '${dateKey}T${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:00.000',
+                              'date': date.toIso8601String(),
                             }),
                           );
                           final data = jsonDecode(response.body);
@@ -264,7 +271,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 class _NoteDialog extends StatefulWidget {
   final String dateKey;
   final List<Map<String, dynamic>> initialNotes;
-  final Future<void> Function(String text) onSave;
+  final Future<void> Function(String text, TimeOfDay time) onSave;
   final Future<void> Function(String id) onDelete;
   final Future<List<Map<String, dynamic>>> Function() onRefresh;
   final Future<void> Function(String id, String newText) onEdit;
@@ -287,6 +294,7 @@ class _NoteDialogState extends State<_NoteDialog> {
   final TextEditingController _controller = TextEditingController();
   bool _saving = false;
   late List<Map<String, dynamic>> _notes;
+  TimeOfDay _selectedTime = TimeOfDay.now();
 
   @override
   void initState() {
@@ -417,6 +425,26 @@ class _NoteDialogState extends State<_NoteDialog> {
             ),
             const SizedBox(height: 12),
             if (_showInput) ...[
+              Row(
+                children: [
+                  const Text('Time: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextButton(
+                    onPressed: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: _selectedTime,
+                      );
+                      if (picked != null) {
+                        setState(() => _selectedTime = picked);
+                      }
+                    },
+                    child: Text(
+                      '${_selectedTime.hourOfPeriod == 0 ? 12 : _selectedTime.hourOfPeriod}:${_selectedTime.minute.toString().padLeft(2, '0')} ${_selectedTime.period == DayPeriod.am ? 'AM' : 'PM'}',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _controller,
                 maxLines: 3,
@@ -443,7 +471,7 @@ class _NoteDialogState extends State<_NoteDialog> {
                         : () async {
                             if (_controller.text.isEmpty) return;
                             setState(() => _saving = true);
-                            await widget.onSave(_controller.text);
+                            await widget.onSave(_controller.text, _selectedTime);
                             await _refresh();
                             setState(() {
                               _saving = false;
