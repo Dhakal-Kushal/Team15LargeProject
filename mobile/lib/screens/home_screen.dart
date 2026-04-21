@@ -264,7 +264,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   GestureDetector(
                     onTap: _showTimerSettings,
-                    child: Text(_formatTime(_seconds), style: TextStyle(fontSize: 72, fontWeight: FontWeight.bold, color: textColor, fontFamily: 'monospace', height: 1.0)),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Text(_formatTime(_seconds), style: TextStyle(fontSize: 72, fontWeight: FontWeight.bold, color: textColor, fontFamily: 'monospace', height: 1.0)),
+                    ),
                   ),
                   const SizedBox(height: 5),
                   Row(
@@ -272,14 +275,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       GestureDetector(
                         onTap: _startStop,
-                        child: Container(
-                          width: 130, height: 50,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4C00FF), Color(0xFF1E006E)]),
-                            borderRadius: BorderRadius.circular(8),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Container(
+                            width: 130, height: 50,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4C00FF), Color(0xFF1E006E)]),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(_isRunning ? 'PAUSE' : 'START', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2)),
                           ),
-                          alignment: Alignment.center,
-                          child: Text(_isRunning ? 'PAUSE' : 'START', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -292,14 +298,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           });
                           _audioPlayer.stop();
                         },
-                        child: Container(
-                          width: 130, height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade800,
-                            borderRadius: BorderRadius.circular(8),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Container(
+                            width: 130, height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade800,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text('RESET', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2)),
                           ),
-                          alignment: Alignment.center,
-                          child: const Text('RESET', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2)),
                         ),
                       ),
                     ],

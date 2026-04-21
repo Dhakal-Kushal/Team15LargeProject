@@ -99,12 +99,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                IconButton(icon: const Icon(Icons.chevron_left), onPressed: _previousMonth),
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: _previousMonth,
+                  tooltip: 'Previous month',
+                ),
                 Text(
                   '${_monthName(_focusedMonth.month)} ${_focusedMonth.year}',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
-                IconButton(icon: const Icon(Icons.chevron_right), onPressed: _nextMonth),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: _nextMonth,
+                  tooltip: 'Next month',
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -228,7 +236,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         padding: const EdgeInsets.all(4),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min, // add this line
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Text('$dayNum',
                                 style: const TextStyle(
@@ -333,6 +341,7 @@ class _NoteDialogState extends State<_NoteDialog> {
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
+                  tooltip: 'Close',
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -369,6 +378,7 @@ class _NoteDialogState extends State<_NoteDialog> {
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 16),
+                                        tooltip: 'Edit note',
                                         onPressed: () async {
                                           final editController = TextEditingController(text: note['text'].toString());
                                           await showDialog(
@@ -404,6 +414,7 @@ class _NoteDialogState extends State<_NoteDialog> {
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, color: Colors.red, size: 16),
+                                        tooltip: 'Delete note',
                                         onPressed: () async {
                                           await widget.onDelete(note['id'].toString());
                                           await _refresh();
