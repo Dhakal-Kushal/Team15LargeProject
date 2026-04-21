@@ -656,6 +656,7 @@ const closeSettings = () => {
           cursor: 'pointer',
           border: 'none',
           boxShadow: 'none',
+          borderRadius: '8px',
         }}
       >
         Reset
