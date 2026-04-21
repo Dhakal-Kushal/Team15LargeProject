@@ -27,8 +27,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _timer;
   double _volume = 0.5;
   final AudioPlayer _audioPlayer = AudioPlayer();
+  StreamSubscription? _playerStateSubscription;
 
   bool _showIndicator = true;
+  
+  // --- ALERT STATE ---
+  bool _showAlert = false;
+  String _alertMessage = "";
+  Timer? _alertTimer;
+
   final TextEditingController _noteController = TextEditingController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   
@@ -40,14 +47,35 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _jwtToken = widget.jwtToken;
+    _audioPlayer.setVolume(_volume);
+
+    // Listen to player state changes (playing, stopped, completed)
+    // This ensures the Play/Stop icon updates even when the sound finishes on its own
+    _playerStateSubscription = _audioPlayer.onPlayerStateChanged.listen((state) {
+      if (mounted) setState(() {}); 
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _alertTimer?.cancel();
+    _playerStateSubscription?.cancel(); // Clean up listener
     _noteController.dispose();
     _audioPlayer.dispose();
     super.dispose();
+  }
+
+  void _triggerAlert(String message) {
+    _alertTimer?.cancel();
+    setState(() {
+      _alertMessage = message;
+      _showAlert = true;
+    });
+
+    _alertTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted) setState(() => _showAlert = false);
+    });
   }
 
   String _formatTime(int totalSeconds) {
@@ -79,11 +107,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _playAlarm() async {
     await _audioPlayer.setVolume(_volume);
+    await _audioPlayer.setReleaseMode(ReleaseMode.loop);
     await _audioPlayer.play(AssetSource('TimerSound.mp3'));
   }
 
-  void _playTestSound() async {
+  Future<void> _playTestSound() async {
     await _audioPlayer.setVolume(_volume);
+    await _audioPlayer.setReleaseMode(ReleaseMode.release);
     await _audioPlayer.play(AssetSource('TimerSound.mp3'));
   }
 
@@ -95,6 +125,8 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            bool isPlaying = _audioPlayer.state == PlayerState.playing;
+
             return Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -121,19 +153,44 @@ class _HomeScreenState extends State<HomeScreen> {
                           onChanged: (val) {
                             setModalState(() => _volume = val);
                             setState(() => _volume = val);
+                            _audioPlayer.setVolume(val);
+                            
+                            // If user is sliding and it's not playing, start it so they can hear
+                            if (_audioPlayer.state != PlayerState.playing) {
+                              _playTestSound();
+                            }
                           },
                         ),
                       ),
-                      IconButton(icon: Icon(Icons.play_arrow, color: isDark ? Colors.white : Colors.black), onPressed: _playTestSound)
+                      IconButton(
+                        // TOGGLE ICON: Checks if player is currently playing
+                        icon: Icon(
+                          isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled, 
+                          color: isDark ? Colors.white : Colors.black,
+                          size: 32,
+                        ), 
+                        onPressed: () async {
+                          if (isPlaying) {
+                            await _audioPlayer.stop();
+                          } else {
+                            await _playTestSound();
+                          }
+                          // Rebuild the modal UI to flip the icon
+                          setModalState(() {});
+                        }
+                      )
                     ],
                   ),
+                  Text("${(_volume * 100).toInt()}%", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)),
                 ],
               ),
             );
           },
         );
       },
-    ).whenComplete(() => _audioPlayer.stop());
+    ).whenComplete(() {
+      _audioPlayer.stop();
+    });
   }
 
   Widget _buildTimeButton(int mins, StateSetter setModalState) {
@@ -168,9 +225,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _createNote() async {
     final String idStr = widget.userData['id']?.toString() ?? "-1";
+    if (idStr == "-1" || idStr == "null" || idStr == "") {
+      _triggerAlert("Log in to create notes");
+      return;
+    }
     final String noteText = _noteController.text.trim();
-    if (idStr == "-1" || idStr == "null" || noteText.isEmpty) return;
-
+    if (noteText.isEmpty) return;
     try {
       final response = await http.post(
         Uri.parse('https://team15study.com/api/addcard'),
@@ -255,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text("Click here to change timer settings", style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13)),
+                            Text("Click timer to change timer settings", style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 13)),
                             const SizedBox(width: 8),
                             GestureDetector(onTap: () => setState(() => _showIndicator = false), child: Icon(Icons.close, size: 16, color: textColor.withOpacity(0.6))),
                           ],
@@ -337,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
-                    onPressed: _createNote,
+                    onPressed: _createNote, 
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2d4ef5), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))),
                     child: const Text("Create Note", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
@@ -346,21 +406,72 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          
+          if (_showAlert)
+            Positioned(
+              top: 18, 
+              right: 70, 
+              child: TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 300),
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: Transform.translate(
+                      offset: Offset((1 - value) * 10, 0),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2), 
+                          border: Border.all(color: const Color(0xFF7F1D1D)), 
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.warning_rounded, color: Colors.black, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              _alertMessage,
+                              softWrap: false,
+                              style: const TextStyle(color: Color(0xFF7F1D1D), fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => setState(() => _showAlert = false),
+                              child: const Icon(Icons.close, color: Color(0xFF7F1D1D), size: 16),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+              ),
+            ),
+
           Positioned(top: 16, left: 16, child: FloatingActionButton.small(heroTag: "m", backgroundColor: const Color(0xFF2d4ef5), onPressed: () => _scaffoldKey.currentState?.openDrawer(), child: const Icon(Icons.menu, color: Colors.white))),
-          Positioned(top: 16, right: 16, child: FloatingActionButton.small(
-            heroTag: "t", 
-            backgroundColor: MyApp.of(context).isDark ? const Color(0xFF1E1E1E) : Colors.white, 
-            onPressed: () {
-              MyApp.of(context).toggleTheme();
-              setState(() {});
-            }, 
-            child: Icon(MyApp.of(context).isDark ? Icons.nightlight_round : Icons.wb_sunny, 
-              color: MyApp.of(context).isDark ? Colors.yellow : Colors.orange)
-          )),
+          Positioned(
+            top: 16, 
+            right: 16, 
+            child: FloatingActionButton.small(
+              heroTag: "t", 
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white, 
+              onPressed: () {
+                MyApp.of(context).toggleTheme();
+                setState(() {});
+              }, 
+              child: Icon(
+                isDark ? Icons.nightlight_round : Icons.wb_sunny, 
+                color: isDark ? Colors.yellow : Colors.orange
+              )
+            )
+          ),
+          
           if (!isLoggedIn)
             Positioned(bottom: 16, left: 16, child: ElevatedButton(onPressed: () => Navigator.pushReplacementNamed(context, '/login'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2d4ef5), shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)), child: const Text("Login / Register", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
           
-          // --- UPDATED CALENDAR BUTTON ---
           Positioned(
             bottom: 16, 
             right: 16, 
@@ -368,12 +479,16 @@ class _HomeScreenState extends State<HomeScreen> {
               heroTag: "c", 
               backgroundColor: const Color(0xFF2d4ef5), 
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CalendarScreen(jwtToken: _jwtToken),
-                  ),
-                );
+                if (!isLoggedIn) {
+                  _triggerAlert("Log in to access the calendar");
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CalendarScreen(jwtToken: _jwtToken),
+                    ),
+                  );
+                }
               }, 
               child: const Icon(Icons.calendar_month, color: Colors.white)
             )

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../main.dart'; // Import main
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -18,7 +19,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   
   String _errorMessage = '';
   String _successMessage = '';
-  bool _isDarkMode = true;
 
   Future<void> _register() async {
     try {
@@ -33,9 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'email': _emailController.text,
         }),
       );
-
       final data = jsonDecode(response.body);
-
       if (data['error'] == '' && data['id'] != -1) {
         setState(() {
           _successMessage = 'Account created! Please verify your email.';
@@ -54,21 +52,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = _isDarkMode ? const Color(0xFF121212) : Colors.white;
-    final textColor = _isDarkMode ? Colors.white : Colors.black;
-    final inputColor = _isDarkMode ? Colors.white10 : Colors.grey[200]!;
+    // --- GLOBAL THEME SYNC ---
+    final bool isDark = MyApp.of(context).isDark;
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
+    final inputColor = isDark ? Colors.white10 : Colors.grey[200]!;
 
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: null, // Title removed from top left
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: textColor,
         actions: [
           IconButton(
-            icon: Icon(_isDarkMode ? Icons.nightlight_round : Icons.wb_sunny),
-            onPressed: () => setState(() => _isDarkMode = !_isDarkMode),
+            icon: Icon(isDark ? Icons.nightlight_round : Icons.wb_sunny),
+            color: isDark ? Colors.yellow : Colors.orange,
+            onPressed: () => MyApp.of(context).toggleTheme(),
           )
         ],
       ),
@@ -79,11 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Column(
               children: [
-                // Header added here
-                Text(
-                  "Register",
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textColor),
-                ),
+                Text("Register", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textColor)),
                 const SizedBox(height: 40),
                 _buildField(_firstNameController, 'First Name', inputColor, textColor),
                 const SizedBox(height: 12),
