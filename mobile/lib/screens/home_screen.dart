@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
-import 'calendar_screen.dart'; // Make sure this import is correct
+import 'calendar_screen.dart';
+import '../main.dart';
 
 class HomeScreen extends StatefulWidget {
   final String jwtToken;
@@ -28,12 +29,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final AudioPlayer _audioPlayer = AudioPlayer();
 
   bool _showIndicator = true;
-  bool _isDarkMode = true;
   final TextEditingController _noteController = TextEditingController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   
   final List<dynamic> _notes = []; 
   late String _jwtToken;
+  bool get isDark => MyApp.of(context).isDark;
 
   @override
   void initState() {
@@ -89,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showTimerSettings() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: _isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+      backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
         return StatefulBuilder(
@@ -99,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text("Timer Settings", style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text("Timer Settings", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -113,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      Icon(Icons.volume_down, color: _isDarkMode ? Colors.white : Colors.black),
+                      Icon(Icons.volume_down, color: isDark ? Colors.white : Colors.black),
                       Expanded(
                         child: Slider(
                           value: _volume,
@@ -123,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                         ),
                       ),
-                      IconButton(icon: Icon(Icons.play_arrow, color: _isDarkMode ? Colors.white : Colors.black), onPressed: _playTestSound)
+                      IconButton(icon: Icon(Icons.play_arrow, color: isDark ? Colors.white : Colors.black), onPressed: _playTestSound)
                     ],
                   ),
                 ],
@@ -132,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
       },
-    );
+    ).whenComplete(() => _audioPlayer.stop());
   }
 
   Widget _buildTimeButton(int mins, StateSetter setModalState) {
@@ -201,14 +202,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final String idStr = widget.userData['id']?.toString() ?? "-1";
     final bool isLoggedIn = idStr != "-1" && idStr != "null" && idStr != "";
-    final bgColor = _isDarkMode ? const Color(0xFF121212) : Colors.white;
-    final textColor = _isDarkMode ? Colors.white : Colors.black;
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: bgColor,
       drawer: Drawer(
-        backgroundColor: _isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
+        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
         child: Column(
           children: [
             Container(
@@ -266,17 +267,42 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(_formatTime(_seconds), style: TextStyle(fontSize: 72, fontWeight: FontWeight.bold, color: textColor, fontFamily: 'monospace', height: 1.0)),
                   ),
                   const SizedBox(height: 5),
-                  GestureDetector(
-                    onTap: _startStop,
-                    child: Container(
-                      width: 160, height: 50,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4C00FF), Color(0xFF1E006E)]),
-                        borderRadius: BorderRadius.circular(8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: _startStop,
+                        child: Container(
+                          width: 130, height: 50,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF4C00FF), Color(0xFF1E006E)]),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(_isRunning ? 'PAUSE' : 'START', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                        ),
                       ),
-                      alignment: Alignment.center,
-                      child: Text(_isRunning ? 'PAUSE' : 'START', style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                    ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () {
+                          _timer?.cancel();
+                          setState(() {
+                            _seconds = _initialSeconds;
+                            _isRunning = false;
+                          });
+                          _audioPlayer.stop();
+                        },
+                        child: Container(
+                          width: 130, height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade800,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          alignment: Alignment.center,
+                          child: const Text('RESET', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 40),
                   ConstrainedBox(
@@ -287,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 300,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: _isDarkMode ? Colors.white.withOpacity(0.05) : const Color(0xFFEEF4FF),
+                          color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFEEF4FF),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0xFF6c8ef2), width: 2), 
                         ),
@@ -312,7 +338,16 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Positioned(top: 16, left: 16, child: FloatingActionButton.small(heroTag: "m", backgroundColor: const Color(0xFF2d4ef5), onPressed: () => _scaffoldKey.currentState?.openDrawer(), child: const Icon(Icons.menu, color: Colors.white))),
-          Positioned(top: 16, right: 16, child: FloatingActionButton.small(heroTag: "t", backgroundColor: _isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, onPressed: () => setState(() => _isDarkMode = !_isDarkMode), child: Icon(_isDarkMode ? Icons.nightlight_round : Icons.wb_sunny, color: _isDarkMode ? Colors.yellow : Colors.orange))),
+          Positioned(top: 16, right: 16, child: FloatingActionButton.small(
+            heroTag: "t", 
+            backgroundColor: MyApp.of(context).isDark ? const Color(0xFF1E1E1E) : Colors.white, 
+            onPressed: () {
+              MyApp.of(context).toggleTheme();
+              setState(() {});
+            }, 
+            child: Icon(MyApp.of(context).isDark ? Icons.nightlight_round : Icons.wb_sunny, 
+              color: MyApp.of(context).isDark ? Colors.yellow : Colors.orange)
+          )),
           if (!isLoggedIn)
             Positioned(bottom: 16, left: 16, child: ElevatedButton(onPressed: () => Navigator.pushReplacementNamed(context, '/login'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2d4ef5), shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)), child: const Text("Login / Register", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
           
