@@ -199,11 +199,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ...notes.take(2).map((n) => Container(
                                   margin: const EdgeInsets.only(bottom: 2),
                                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  decoration: BoxDecoration(color: const Color(0xFF2d4ef5).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                                  child: Text(n['text'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8, color: Color(0xFF2d4ef5), fontWeight: FontWeight.w600)),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2d4ef5).withOpacity(isDark ? 0.4 : 0.15),
+                                    borderRadius: BorderRadius.circular(4)
+                                  ),
+                                  child: Text(
+                                    n['text'],
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 8,
+                                      color: isDark ? Colors.white : const Color(0xFF2d4ef5),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 )),
                             if (notes.length > 2)
-                              Text('+${notes.length - 2} more', style: const TextStyle(fontSize: 8, color: Colors.grey)),
+                              Text('+${notes.length - 2} more', style: TextStyle(fontSize: 8, color: textColor.withOpacity(0.6))),
                           ],
                         ),
                       ),
@@ -285,7 +297,7 @@ class _NoteDialogState extends State<_NoteDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Notes: ${widget.dateKey}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor)),
-                IconButton(icon: Icon(Icons.close, color: textColor), onPressed: () => Navigator.pop(context)),
+                IconButton(icon: Icon(Icons.close, color: textColor), onPressed: () => Navigator.pop(context), tooltip: 'Close'),
               ],
             ),
             const SizedBox(height: 12),
@@ -317,6 +329,7 @@ class _NoteDialogState extends State<_NoteDialog> {
                                     children: [
                                       IconButton(
                                         icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
+                                        tooltip: 'Edit note',
                                         onPressed: () async {
                                           final editCtrl = TextEditingController(text: note['text']);
                                           await showDialog(
@@ -341,10 +354,31 @@ class _NoteDialogState extends State<_NoteDialog> {
                                         },
                                       ),
                                       IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 16),
+                                        tooltip: 'Delete note',
                                         onPressed: () async {
-                                          await widget.onDelete(note['id'].toString());
-                                          await _refresh();
+                                          final confirm = await showDialog<bool>(
+                                            context: context,
+                                            builder: (_) => AlertDialog(
+                                              title: const Text('Delete Note'),
+                                              content: const Text('Are you sure you want to delete this note?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context, false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () => Navigator.pop(context, true),
+                                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                                  child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            await widget.onDelete(note['id'].toString());
+                                            await _refresh();
+                                          }
                                         },
                                       ),
                                     ],
