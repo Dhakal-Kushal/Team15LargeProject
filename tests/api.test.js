@@ -159,3 +159,109 @@ describe('POST /api/addcard (JWT-gated)', () => {
         expect(res.body.error).toMatch(/jwt/i);
     });
 });
+
+// Helper: register a user, flip Verified=true directly in Mongo, log in, return
+// { login, email, userId, accessToken } so downstream tests can skip the
+// register -> email-verify -> login dance.
+async function createVerifiedUser() {
+    const login = 'jesttest-ver-' + randomSuffix();
+    const email = login + '@example.test';
+    createdLogins.push(login);
+    createdEmails.push(email);
+
+    await request(app)
+        .post('/api/register')
+        .send({ firstName: 'Ver', lastName: 'User', login, password: 'demo1234', email });
+
+    const db = client.db('COP4331Cards');
+    await db.collection('Users').updateOne(
+        { Login: login },
+        { $set: { Verified: true }, $unset: { VerificationToken: '', VerificationTokenExpires: '' } }
+    );
+
+    const loginRes = await request(app).post('/api/login').send({ login, password: 'demo1234' });
+    const user = await db.collection('Users').findOne({ Login: login });
+    return { login, email, userId: user.UserID, accessToken: loginRes.body.accessToken };
+}
+
+describe('POST /api/login success', () => {
+    test('returns a JWT accessToken for a verified user with correct password', async () => {
+        const login = 'jesttest-loginok-' + randomSuffix();
+        const email = login + '@example.test';
+        createdLogins.push(login);
+        createdEmails.push(email);
+
+        await request(app)
+            .post('/api/register')
+            .send({ firstName: 'Log', lastName: 'In', login, password: 'demo1234', email });
+
+        const db = client.db('COP4331Cards');
+        await db.collection('Users').updateOne(
+            { Login: login },
+            { $set: { Verified: true } }
+        );
+
+        const res = await request(app).post('/api/login').send({ login, password: 'demo1234' });
+        expect(res.status).toBe(200);
+        expect(typeof res.body.accessToken).toBe('string');
+        expect(res.body.accessToken.split('.').length).toBe(3); // JWTs have 3 parts
+    });
+});
+
+describe('GET /api/verify success', () => {
+    test('flips a user to Verified when a valid token is used', async () => {
+        const login = 'jesttest-verifyok-' + randomSuffix();
+        const email = login + '@example.test';
+        createdLogins.push(login);
+        createdEmails.push(email);
+
+        await request(app)
+            .post('/api/register')
+            .send({ firstName: 'Vfy', lastName: 'Ok', login, password: 'demo1234', email });
+
+        const db = client.db('COP4331Cards');
+        const user = await db.collection('Users').findOne({ Login: login });
+        const token = user.VerificationToken;
+
+        const res = await request(app).get('/api/verify').query({ token });
+        expect(res.status).toBe(200);
+        expect(res.body.verified).toBe(true);
+        expect(res.body.error).toBe('');
+
+        const updated = await db.collection('Users').findOne({ Login: login });
+        expect(updated.Verified).toBe(true);
+    });
+});
+
+describe('POST /api/addcard success', () => {
+    test('creates a note for a verified logged-in user', async () => {
+        const { accessToken } = await createVerifiedUser();
+        const res = await request(app)
+            .post('/api/addcard')
+            .send({ text: 'Integration test note', jwtToken: accessToken });
+        expect(res.status).toBe(200);
+        expect(res.body.error).toBe('');
+        expect(typeof res.body.id).toBe('string');
+        expect(res.body.jwtToken).toBeDefined();
+        expect(typeof res.body.jwtToken.accessToken).toBe('string');
+    });
+});
+
+describe('POST /api/deletecard ownership', () => {
+    test('rejects a delete attempt from a user who does not own the card', async () => {
+        const userA = await createVerifiedUser();
+        const userB = await createVerifiedUser();
+
+        const addRes = await request(app)
+            .post('/api/addcard')
+            .send({ text: 'A-owned note', jwtToken: userA.accessToken });
+        expect(addRes.body.error).toBe('');
+        const cardId = addRes.body.id;
+
+        const delRes = await request(app)
+            .post('/api/deletecard')
+            .send({ id: cardId, jwtToken: userB.accessToken });
+        expect(delRes.status).toBe(200);
+        expect(delRes.body.error).toMatch(/unauthorized/i);
+    });
+});
