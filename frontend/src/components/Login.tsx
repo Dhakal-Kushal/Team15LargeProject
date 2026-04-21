@@ -64,7 +64,7 @@ function Login() {
       transition: 'background 0.25s ease' // Smooth transition
     }}>
       {/* Theme Toggle Button */}
-      <button onClick={toggleDarkMode} style={{ position: 'fixed', top: '16px', right: '16px', background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '50%', width: '42px', height: '42px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+      <button aria-label="Toggle light and dark mode" onClick={toggleDarkMode} style={{ position: 'fixed', top: '16px', right: '16px', background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '50%', width: '42px', height: '42px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
         {isDarkMode ? '🌙' : '☀️'}
       </button>
 
