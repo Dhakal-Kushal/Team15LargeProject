@@ -213,9 +213,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     child: Container(
                       margin: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(4),
@@ -232,7 +232,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 4, vertical: 1),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
+                                    color: Theme.of(context).colorScheme.primaryContainer,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
@@ -344,7 +344,7 @@ class _NoteDialogState extends State<_NoteDialog> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(

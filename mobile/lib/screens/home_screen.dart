@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'calendar_screen.dart';
+import '../main.dart';
 
 class HomeScreen extends StatefulWidget {
   final String jwtToken;
@@ -159,13 +160,34 @@ Future<void> _createNote() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Welcome to the Study App'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_month),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(
-              builder: (_) => CalendarScreen(jwtToken: _jwtToken),
-            )),
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              showMenu(
+                context: context,
+                position: const RelativeRect.fromLTRB(1000, 60, 0, 0),
+                items: [
+                  PopupMenuItem(
+                    child: StatefulBuilder(
+                      builder: (context, setMenuState) => Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Dark Mode'),
+                          Switch(
+                            value: MyApp.of(context).isDark,
+                            onChanged: (_) {
+                              MyApp.of(context).toggleTheme();
+                              setMenuState(() {});
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -195,6 +217,16 @@ Future<void> _createNote() async {
               ],
             ),
             const Spacer(),
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.calendar_month),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => CalendarScreen(jwtToken: _jwtToken),
+                )),
+              ),
+            ),
 
             // Notes section
             TextField(
