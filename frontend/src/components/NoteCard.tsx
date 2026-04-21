@@ -404,7 +404,7 @@ const closeSettings = () => {
 <div style={panelStyle}>
   <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
     <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-      {userId !== -1 ? `My Notes (${notes.length})` : 'Guest Mode'}
+      {userId !== -1 ? `Session Notes (${notes.length})` : 'Guest Mode'}
     </span>
     <button aria-label="Close notes panel" onClick={() => setPanelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-sub)' }}>&#x2715;</button>
   </div>
