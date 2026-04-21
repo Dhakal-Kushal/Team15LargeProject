@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
-// import 'calendar_screen.dart'; // Ensure this file exists
+import 'calendar_screen.dart'; // Make sure this import is correct
 
 class HomeScreen extends StatefulWidget {
   final String jwtToken;
@@ -86,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await _audioPlayer.play(AssetSource('TimerSound.mp3'));
   }
 
-  // --- Added/Fixed Method ---
   void _showTimerSettings() {
     showModalBottomSheet(
       context: context,
@@ -100,8 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text("Timer Settings", 
-                    style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text("Timer Settings", style: TextStyle(color: _isDarkMode ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -125,13 +123,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.play_arrow, color: _isDarkMode ? Colors.white : Colors.black),
-                        onPressed: _playTestSound,
-                      )
+                      IconButton(icon: Icon(Icons.play_arrow, color: _isDarkMode ? Colors.white : Colors.black), onPressed: _playTestSound)
                     ],
                   ),
-                  const SizedBox(height: 10),
                 ],
               ),
             );
@@ -166,8 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _extractToken(dynamic tokenData) {
     if (tokenData == null) return _jwtToken;
     if (tokenData is Map) {
-      return tokenData['accessToken']?.toString() ?? 
-             tokenData['jwtToken']?.toString() ?? _jwtToken;
+      return tokenData['accessToken']?.toString() ?? tokenData['jwtToken']?.toString() ?? _jwtToken;
     }
     return tokenData.toString();
   }
@@ -175,12 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _createNote() async {
     final String idStr = widget.userData['id']?.toString() ?? "-1";
     final String noteText = _noteController.text.trim();
-
-    if (idStr == "-1" || idStr == "null") {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Login to create notes")));
-      return;
-    }
-    if (noteText.isEmpty) return;
+    if (idStr == "-1" || idStr == "null" || noteText.isEmpty) return;
 
     try {
       final response = await http.post(
@@ -188,38 +176,25 @@ class _HomeScreenState extends State<HomeScreen> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'userId': idStr, 'text': noteText, 'jwtToken': _jwtToken}),
       );
-
       if (!mounted) return;
-
       final data = jsonDecode(response.body);
-      if (data['jwtToken'] != null) {
-        setState(() => _jwtToken = _extractToken(data['jwtToken']));
-      }
-
+      if (data['jwtToken'] != null) setState(() => _jwtToken = _extractToken(data['jwtToken']));
       if (data['error'] == null || data['error'] == "") {
-        setState(() {
-          _notes.insert(0, {'text': noteText, 'id': data['id']});
-        });
+        setState(() => _notes.insert(0, {'text': noteText, 'id': data['id']}));
         _noteController.clear();
       }
-    } catch (e) {
-      debugPrint("Error: $e");
-    }
+    } catch (e) { debugPrint("Error: $e"); }
   }
 
   Future<void> _deleteNote(String noteId) async {
     try {
-      setState(() {
-        _notes.removeWhere((note) => note['id'].toString() == noteId);
-      });
+      setState(() => _notes.removeWhere((note) => note['id'].toString() == noteId));
       await http.post(
         Uri.parse('http://174.138.45.229:5000/api/deletecard'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'id': noteId, 'jwtToken': _jwtToken}),
       );
-    } catch (e) {
-      debugPrint("Error: $e");
-    }
+    } catch (e) { debugPrint("Error: $e"); }
   }
 
   @override
@@ -254,10 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: _notes.length,
                     itemBuilder: (context, i) => ListTile(
                       title: Text(_notes[i]['text'] ?? "", style: TextStyle(color: textColor)),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                        onPressed: () => _deleteNote(_notes[i]['id'].toString()),
-                      ),
+                      trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => _deleteNote(_notes[i]['id'].toString())),
                     ),
                   )
                 : const Center(child: Text("Log in to see notes")),
@@ -343,7 +315,25 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned(top: 16, right: 16, child: FloatingActionButton.small(heroTag: "t", backgroundColor: _isDarkMode ? const Color(0xFF1E1E1E) : Colors.white, onPressed: () => setState(() => _isDarkMode = !_isDarkMode), child: Icon(_isDarkMode ? Icons.nightlight_round : Icons.wb_sunny, color: _isDarkMode ? Colors.yellow : Colors.orange))),
           if (!isLoggedIn)
             Positioned(bottom: 16, left: 16, child: ElevatedButton(onPressed: () => Navigator.pushReplacementNamed(context, '/login'), style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2d4ef5), shape: const StadiumBorder(), padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12)), child: const Text("Login / Register", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)))),
-          Positioned(bottom: 16, right: 16, child: FloatingActionButton(heroTag: "c", backgroundColor: const Color(0xFF2d4ef5), onPressed: () {}, child: const Icon(Icons.calendar_month, color: Colors.white))),
+          
+          // --- UPDATED CALENDAR BUTTON ---
+          Positioned(
+            bottom: 16, 
+            right: 16, 
+            child: FloatingActionButton(
+              heroTag: "c", 
+              backgroundColor: const Color(0xFF2d4ef5), 
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CalendarScreen(jwtToken: _jwtToken),
+                  ),
+                );
+              }, 
+              child: const Icon(Icons.calendar_month, color: Colors.white)
+            )
+          ),
         ],
       ),
     );
