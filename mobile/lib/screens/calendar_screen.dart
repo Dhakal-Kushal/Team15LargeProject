@@ -342,8 +342,6 @@ class _NoteDialogState extends State<_NoteDialog> {
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
                   tooltip: 'Close',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -409,8 +407,6 @@ class _NoteDialogState extends State<_NoteDialog> {
                                           );
                                           editController.dispose();
                                         },
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
                                       ),
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, color: Colors.red, size: 16),
@@ -419,8 +415,6 @@ class _NoteDialogState extends State<_NoteDialog> {
                                           await widget.onDelete(note['id'].toString());
                                           await _refresh();
                                         },
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
                                       ),
                                     ],
                                   ),
