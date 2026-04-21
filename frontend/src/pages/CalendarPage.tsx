@@ -62,6 +62,24 @@ function CalendarPage() {
     }
   }
 
+  async function handleDeleteNote(id: string): Promise<void> {
+    const confirm = window.confirm('Are you sure you want to delete this note?');
+    if (!confirm) return;
+
+    try {
+      const response = await fetch(buildPath('api/deletecard'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, jwtToken: retrieveToken() }),
+      });
+      const data = await response.json();
+      if (data.jwtToken) storeToken(data.jwtToken);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error('Failed to delete note:', err);
+    }
+  }
+
   async function handleAddNote(): Promise<void> {
     if (!newNoteText.trim() || !selectedDateKey) return;
 
@@ -319,8 +337,24 @@ function CalendarPage() {
                   borderRadius: '12px', padding: '16px',
                   border: isDarkMode ? '1px solid #444' : '1px solid #e4eaf5'
                 }}>
-                  <div style={{ fontSize: '12px', color: '#5577bb', fontWeight: 700, marginBottom: '8px' }}>
-                    {new Date(note.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '12px', color: '#5577bb', fontWeight: 700 }}>
+                      {new Date(note.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteNote(note.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#e53e3e',
+                        fontSize: '18px',
+                        padding: '0 4px',
+                      }}
+                      title="Delete note"
+                    >
+                      🗑
+                    </button>
                   </div>
                   <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: 1.5 }}>
                     {note.text}
