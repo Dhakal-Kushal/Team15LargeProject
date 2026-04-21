@@ -18,6 +18,7 @@ function CalendarPage() {
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
+  const [newNoteTime, setNewNoteTime] = useState('12:00');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -68,10 +69,9 @@ function CalendarPage() {
     setSaveError('');
 
     try {
-      // Build a date at noon local time for the selected day so timezone
-      // offsets don't accidentally shift the date to the previous day.
       const [year, month, day] = selectedDateKey.split('-').map(Number);
-      const noteDate = new Date(year, month - 1, day, 12, 0, 0);
+      const [hours, minutes] = newNoteTime.split(':').map(Number);
+      const noteDate = new Date(year, month - 1, day, hours, minutes, 0);
 
       const response = await fetch(buildPath('api/addcard'), {
         method: 'POST',
@@ -89,7 +89,6 @@ function CalendarPage() {
         setSaveError(data.error);
       } else {
         if (data.jwtToken) storeToken(data.jwtToken);
-        // Optimistically add the new note locally so the UI updates instantly
         const newNote: Note = {
           id: data.id,
           text: newNoteText.trim(),
@@ -97,6 +96,7 @@ function CalendarPage() {
         };
         setNotes((prev) => [...prev, newNote]);
         setNewNoteText('');
+        setNewNoteTime('12:00');
         setIsAddingNote(false);
       }
     } catch (err) {
@@ -111,6 +111,7 @@ function CalendarPage() {
     setSelectedDateKey(null);
     setIsAddingNote(false);
     setNewNoteText('');
+    setNewNoteTime('12:00');
     setSaveError('');
   }
 
@@ -336,6 +337,28 @@ function CalendarPage() {
                 border: isDarkMode ? '1px solid #5577bb' : '1px solid #b3c6ef',
                 display: 'flex', flexDirection: 'column', gap: '10px'
               }}>
+
+                {/* Time Picker */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <label style={{ color: 'var(--text-main)', fontSize: '14px', fontWeight: 600 }}>
+                    Time:
+                  </label>
+                  <input
+                    type="time"
+                    value={newNoteTime}
+                    onChange={(e) => setNewNoteTime(e.target.value)}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      border: isDarkMode ? '1px solid #444' : '1px solid #d1dff5',
+                      background: isDarkMode ? '#1e1e1e' : '#ffffff',
+                      color: 'var(--text-main)',
+                      fontSize: '14px',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+
                 <textarea
                   autoFocus
                   value={newNoteText}
@@ -362,7 +385,7 @@ function CalendarPage() {
                 )}
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                   <button
-                    onClick={() => { setIsAddingNote(false); setNewNoteText(''); setSaveError(''); }}
+                    onClick={() => { setIsAddingNote(false); setNewNoteText(''); setNewNoteTime('12:00'); setSaveError(''); }}
                     style={{
                       padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600,
                       border: isDarkMode ? '1px solid #555' : '1px solid #ccc',
