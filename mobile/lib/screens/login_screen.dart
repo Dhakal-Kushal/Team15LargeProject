@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'register_screen.dart';
 import 'home_screen.dart';
+import 'forgot_password_screen.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -76,27 +78,33 @@ class _LoginScreenState extends State<LoginScreen> {
     final bgColor = _isDarkMode ? const Color(0xFF121212) : Colors.white;
     final textColor = _isDarkMode ? Colors.white : Colors.black;
     final inputColor = _isDarkMode ? Colors.white10 : Colors.grey[200]!;
-
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leadingWidth: 180, 
+        leadingWidth: 180,
         leading: TextButton(
           onPressed: () {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (_) => const HomeScreen(
-                  jwtToken: '', // Fixed missing parameter
+                  jwtToken: '',
                   userData: {'id': -1},
                 ),
               ),
             );
           },
           style: TextButton.styleFrom(alignment: Alignment.center),
-          child: const Text("Continue as Guest", style: TextStyle(color: Color(0xFF2d4ef5), fontWeight: FontWeight.bold, fontSize: 15)),
+          child: const Text(
+            "Continue as Guest",
+            style: TextStyle(
+              color: Color(0xFF2d4ef5),
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
         ),
         actions: [
           IconButton(
@@ -112,16 +120,85 @@ class _LoginScreenState extends State<LoginScreen> {
             constraints: const BoxConstraints(maxWidth: 400),
             child: Column(
               children: [
-                Text("Login", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: textColor)),
+                Text(
+                  "Login",
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
+                ),
                 const SizedBox(height: 40),
-                TextField(controller: _usernameController, style: TextStyle(color: textColor), decoration: InputDecoration(labelText: 'Username', filled: true, fillColor: inputColor, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+                TextField(
+                  controller: _usernameController,
+                  style: TextStyle(color: textColor),
+                  decoration: InputDecoration(
+                    labelText: 'Username',
+                    filled: true,
+                    fillColor: inputColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 16),
-                TextField(controller: _passwordController, obscureText: true, style: TextStyle(color: textColor), decoration: InputDecoration(labelText: 'Password', filled: true, fillColor: inputColor, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  style: TextStyle(color: textColor),
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    filled: true,
+                    fillColor: inputColor,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 24),
-                if (_errorMessage.isNotEmpty) Text(_errorMessage, style: const TextStyle(color: Colors.redAccent)),
+                if (_errorMessage.isNotEmpty)
+                  Text(
+                    _errorMessage,
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
                 const SizedBox(height: 16),
-                ElevatedButton(onPressed: _login, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2d4ef5), minimumSize: const Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: const Text('Login', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-                TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())), child: const Text('No account? Register', style: TextStyle(color: Color(0xFF2d4ef5)))),
+                ElevatedButton(
+                  onPressed: _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2d4ef5),
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Login',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const ForgotPasswordScreen(),
+                  )),
+                  child: const Text(
+                    'Forgot password?',
+                    style: TextStyle(color: Color(0xFF2d4ef5)),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const RegisterScreen(),
+                  )),
+                  child: const Text(
+                    'No account? Register',
+                    style: TextStyle(color: Color(0xFF2d4ef5)),
+                  ),
+                ),
               ],
             ),
           ),
