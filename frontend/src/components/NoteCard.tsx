@@ -607,29 +607,60 @@ const closeSettings = () => {
     </button>
 
     {/* Reverted Start/Stop Button */}
-    <button
-      onClick={startStopTimer}
-      className="btn"
-      style={{
-        marginTop: '0px',
-        marginBottom: '40px',
-        fontSize: '32px', 
-        fontWeight: 700, 
-        color: '#dce8f7', 
-        letterSpacing: '2px', 
-        lineHeight: 1, 
-        fontFamily: 'monospace',
-        zIndex: 101,
-        background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
-        width: '160px',
-        height: '50px',
-        cursor: 'pointer',
-        border: 'none',
-        boxShadow: 'none',
-      }}
-    >
-      {start ? 'Pause' : 'Start'}
-    </button>
+    <div style={{ display: 'flex', gap: '12px', marginTop: '0px', marginBottom: '40px' }}>
+      <button
+        onClick={startStopTimer}
+        className="btn"
+        style={{
+          fontSize: '32px', 
+          fontWeight: 700, 
+          color: '#dce8f7', 
+          letterSpacing: '2px', 
+          lineHeight: 1, 
+          fontFamily: 'monospace',
+          zIndex: 101,
+          background: 'linear-gradient(to bottom, rgba(76, 0, 255, 0.84) 0%, rgba(76, 0, 255, 0.84) 90%, rgba(30, 0, 110) 100%)',
+          width: '160px',
+          height: '50px',
+          cursor: 'pointer',
+          border: 'none',
+          boxShadow: 'none',
+        }}
+      >
+        {start ? 'Pause' : 'Start'}
+      </button>
+
+      <button
+        onClick={() => {
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+          }
+          setStart(false);
+          secondsRef.current = initialSecondsRef.current;
+          const mins = Math.floor(secondsRef.current / 60).toString().padStart(2, '0');
+          const secs = (secondsRef.current % 60).toString().padStart(2, '0');
+          setTime(`${mins}:${secs}`);
+        }}
+        style={{
+          fontSize: '32px',
+          fontWeight: 700,
+          color: '#dce8f7',
+          letterSpacing: '2px',
+          lineHeight: 1,
+          fontFamily: 'monospace',
+          zIndex: 101,
+          background: 'linear-gradient(to bottom, rgba(80, 80, 80, 0.9) 0%, rgba(40, 40, 40) 100%)',
+          width: '160px',
+          height: '50px',
+          cursor: 'pointer',
+          border: 'none',
+          boxShadow: 'none',
+        }}
+      >
+        Reset
+      </button>
+    </div>
 
   {/* 3. CHANGE: Increased height of the Note Textarea */}
   <textarea 
