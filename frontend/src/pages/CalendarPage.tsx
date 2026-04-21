@@ -125,6 +125,24 @@ function CalendarPage() {
     }
   }
 
+  async function handleDeleteNote(id: string): Promise<void> {
+    if (!window.confirm('Delete this note?')) return;
+    try {
+      const response = await fetch(buildPath('api/deletecard'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, jwtToken: retrieveToken() }),
+      });
+      const data = await response.json();
+      if (data.jwtToken) storeToken(data.jwtToken);
+      if (!data.error) {
+        setNotes((prev) => prev.filter((n) => n.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to delete note:', err);
+    }
+  }
+
   function handleCloseModal(): void {
     setSelectedDateKey(null);
     setIsAddingNote(false);
@@ -335,7 +353,8 @@ function CalendarPage() {
                 <div key={note.id} style={{
                   background: isDarkMode ? '#2d2d2d' : '#f4f7fc',
                   borderRadius: '12px', padding: '16px',
-                  border: isDarkMode ? '1px solid #444' : '1px solid #e4eaf5'
+                  border: isDarkMode ? '1px solid #444' : '1px solid #e4eaf5',
+                  position: 'relative'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <div style={{ fontSize: '12px', color: '#5577bb', fontWeight: 700 }}>
@@ -356,9 +375,20 @@ function CalendarPage() {
                       🗑
                     </button>
                   </div>
-                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-main)', lineHeight: 1.5, paddingRight: '24px' }}>
                     {note.text}
                   </div>
+                  <button
+                    aria-label="Delete note"
+                    onClick={() => handleDeleteNote(note.id)}
+                    style={{
+                      position: 'absolute', top: '12px', right: '12px',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: '#e53e3e', fontSize: '18px', fontWeight: 700, lineHeight: 1
+                    }}
+                  >
+                    &#x2715;
+                  </button>
                 </div>
               ))
             )}
